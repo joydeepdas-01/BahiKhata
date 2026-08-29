@@ -1,0 +1,39 @@
+# Logs & Temp Files
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Node & Build Outputs
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Heavy Local JDK & Build Intermediates
+assets/jdk/
+.gradle/
+android/app/build/
+android/build/
+android/.gradle/
+android/captures/
+android/.idea/
+
+# Keystores & Credentials
+*.jks
+*.keystore
+*.p12
+*.pem
+google-services.json
+
+# IDE Metadata
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

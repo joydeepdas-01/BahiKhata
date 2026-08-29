@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#b32424" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Red cloth cover of traditional Bahi Khata book -->
+  <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19v18H6.5a2.5 2.5 0 0 1-2.5-2.5Z" fill="#b32424" stroke="#b32424" />
+  <!-- Spine binding border -->
+  <path d="M6.5 2v18" stroke="#ffffff" stroke-width="1.5" />
+  <!-- Golden tying cord closure system representing Bahi string -->
+  <circle cx="13" cy="10" r="2" fill="#e65100" stroke="#e65100" stroke-width="1" />
+  <path d="M13 12c1.5 1 2 2.5 1.5 4" stroke="#e65100" stroke-width="1.5" />
+  <path d="M12 9c-1-1-2.5-1.5-4-.5" stroke="#e65100" stroke-width="1" />
+  <!-- Page ledger line markers -->
+  <line x1="9.5" y1="6" x2="16" y2="6" stroke="#ffffff" stroke-width="1.5" />
+  <line x1="9.5" y1="10" x2="11" y2="10" stroke="#ffffff" stroke-width="1.5" />
+  <line x1="9.5" y1="14" x2="16" y2="14" stroke="#ffffff" stroke-width="1.5" />
+</svg>

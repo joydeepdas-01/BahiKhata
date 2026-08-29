@@ -1,0 +1,201 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  /* Brand System Tokens */
+  --color-bk-brand-primary: #b32424;          /* Khaata Red Cover Cloth */
+  --color-bk-brand-primary-hover: #911d1d;    /* Button hover state */
+  --color-bk-brand-primary-pressed: #701515;  /* Button active state */
+  --color-bk-brand-secondary: #2d3748;        /* Slate Grey (trust & precision) */
+  --color-bk-brand-accent: #e65100;           /* Indian Saffron (priority notice) */
+
+  /* Legacy Mapping for backward compatibility */
+  --color-bk-primary: #b32424;
+  --color-bk-primary-active: #911d1d;
+  --color-bk-focus-ring: #b32424;
+
+  /* Surface & Canvas System */
+  --color-bk-canvas: #fcfbfa;                 /* Warm tactile paper parchment */
+  --color-bk-surface: #ffffff;                /* Pure white surface */
+  --color-bk-surface-soft: #f5f2eb;           /* Warm soft parchment gray */
+  --color-bk-border: #e8e6e1;                 /* Subtle divider hairline */
+  --color-bk-divider: #e8e6e1;
+
+  /* Typography Colors */
+  --color-bk-text-primary: #121214;           /* Charcoal ink black */
+  --color-bk-text-secondary: #5c5e62;         /* Mid charcoal gray */
+  --color-bk-text-tertiary: #8a8c90;          /* Muted subtitle gray */
+  --color-bk-text-on-brand: #ffffff;          /* White text on primary buttons */
+
+  /* Financial Status Semantic System */
+  --color-bk-status-pending: #e65100;         /* Saffron Orange (Pending dues) */
+  --color-bk-status-paid: #1b5e20;            /* Forest Green (Settled ledger) */
+  --color-bk-status-overdue: #b71c1c;         /* Crimson/Oxide Red (Overdue ledger) */
+}
+
+/* ==========================================================================
+   INDEPENDENT DESIGN TOKEN NAMESPACES
+   ========================================================================== */
+
+:root {
+  /* 1. TYPOGRAPHY TOKENS (Independent from Layout Geometry) */
+  --app-font-scale: 1;
+  --app-body-font-size: 0.875rem;       /* 14px */
+  --app-heading-scale: 1.125rem;        /* 18px */
+  --app-label-scale: 0.8125rem;         /* 13px */
+  --app-helper-scale: 0.75rem;          /* 12px */
+  --app-input-scale: 1rem;              /* 16px - prevents WebView focus zoom */
+  --app-kpi-scale: 1.75rem;             /* 28px */
+
+  /* 2. OUTER CONTENT MARGIN (Subtle horizontal breathing area) */
+  --content-margin-inline: 10px;        /* Standard 10px outer margin on mobile */
+
+  /* 3. DENSITY & FIELD GAPS */
+  --ui-card-padding: 1.125rem;          /* 18px */
+  --ui-spacing-gap: 1.125rem;           /* 18px */
+  --ui-field-gap: 0.75rem;              /* 12px */
+  --ui-control-height: 46px;            /* 46px touch targets */
+  --ui-button-height: 46px;
+  --ui-border-radius: 8px;
+}
+
+/* --------------------------------------------------------------------------
+   1. TYPOGRAPHY SCALE (Applies purely to text properties!)
+   -------------------------------------------------------------------------- */
+[data-text-scale="small"] {
+  --app-font-scale: 0.9;
+  --app-body-font-size: 0.8125rem;     /* 13px */
+  --app-heading-scale: 1rem;           /* 16px */
+  --app-label-scale: 0.75rem;          /* 12px */
+  --app-helper-scale: 0.6875rem;       /* 11px */
+  --app-input-scale: 0.9375rem;        /* 15px */
+  --app-kpi-scale: 1.5rem;             /* 24px */
+}
+
+[data-text-scale="standard"] {
+  --app-font-scale: 1;
+  --app-body-font-size: 0.875rem;      /* 14px */
+  --app-heading-scale: 1.125rem;       /* 18px */
+  --app-label-scale: 0.8125rem;        /* 13px */
+  --app-helper-scale: 0.75rem;         /* 12px */
+  --app-input-scale: 1rem;             /* 16px */
+  --app-kpi-scale: 1.75rem;            /* 28px */
+}
+
+[data-text-scale="large"] {
+  --app-font-scale: 1.1;
+  --app-body-font-size: 0.9375rem;     /* 15px */
+  --app-heading-scale: 1.25rem;        /* 20px */
+  --app-label-scale: 0.875rem;         /* 14px */
+  --app-helper-scale: 0.8125rem;       /* 13px */
+  --app-input-scale: 1.0625rem;        /* 17px */
+  --app-kpi-scale: 2rem;               /* 32px */
+}
+
+[data-text-scale="extra-large"] {
+  --app-font-scale: 1.2;
+  --app-body-font-size: 1rem;          /* 16px */
+  --app-heading-scale: 1.375rem;       /* 22px */
+  --app-label-scale: 0.9375rem;        /* 15px */
+  --app-helper-scale: 0.875rem;        /* 14px */
+  --app-input-scale: 1.125rem;         /* 18px */
+  --app-kpi-scale: 2.25rem;            /* 36px */
+}
+
+/* --------------------------------------------------------------------------
+   2. CONTENT WIDTH / OUTER SCREEN MARGIN
+   -------------------------------------------------------------------------- */
+[data-content-width="full"] {
+  --content-margin-inline: 0px;
+}
+
+[data-content-width="standard"] {
+  --content-margin-inline: 10px;        /* Subtle 10px margin on mobile */
+}
+
+[data-content-width="comfortable"] {
+  --content-margin-inline: 16px;        /* Slightly larger breathing room */
+}
+
+/* --------------------------------------------------------------------------
+   3. SUBTLE UI DENSITY
+   -------------------------------------------------------------------------- */
+[data-density="compact"] {
+  --ui-card-padding: 0.875rem;          /* 14px */
+  --ui-spacing-gap: 0.875rem;           /* 14px */
+  --ui-field-gap: 0.625rem;             /* 10px */
+  --ui-control-height: 42px;
+  --ui-button-height: 42px;
+}
+
+[data-density="standard"] {
+  --ui-card-padding: 1.125rem;          /* 18px */
+  --ui-spacing-gap: 1.125rem;           /* 18px */
+  --ui-field-gap: 0.75rem;              /* 12px */
+  --ui-control-height: 46px;
+  --ui-button-height: 46px;
+}
+
+[data-density="comfortable"] {
+  --ui-card-padding: 1.375rem;          /* 22px */
+  --ui-spacing-gap: 1.375rem;           /* 22px */
+  --ui-field-gap: 1rem;                 /* 16px */
+  --ui-control-height: 50px;
+  --ui-button-height: 50px;
+}
+
+/* --------------------------------------------------------------------------
+   4. REDUCE MOTION & THEME
+   -------------------------------------------------------------------------- */
+[data-reduce-motion="true"] *,
+[data-reduce-motion="true"] ::before,
+[data-reduce-motion="true"] ::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Dark Mode Surface Override */
+[data-theme="dark"] {
+  --color-bk-canvas: #121214;
+  --color-bk-surface: #1e1e22;
+  --color-bk-surface-soft: #27272a;
+  --color-bk-border: #3f3f46;
+  --color-bk-text-primary: #f4f4f5;
+  --color-bk-text-secondary: #a1a1aa;
+  --color-bk-text-tertiary: #71717a;
+}
+
+/* Base HTML Document Root - Fixed 16px */
+html {
+  font-size: 16px !important;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+*, ::before, ::after {
+  box-sizing: border-box;
+}
+
+body {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+  background-color: var(--color-bk-canvas);
+  color: var(--color-bk-text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Safe Area Insets for Android */
+.pb-safe {
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+.pt-safe {
+  padding-top: max(12px, env(safe-area-inset-top));
+}
