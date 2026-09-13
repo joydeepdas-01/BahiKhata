@@ -3,6 +3,7 @@ import { CloseIcon, TrashIcon } from './Icons';
 import { Customer } from '../domain/customer';
 import { exportToCSV, parseCSV } from '../domain/csvHelper';
 import { formatIndianCurrency } from '../domain/amountFormatter';
+import { DEFAULT_TEMPLATES, parseTemplate } from '../domain/templates';
 import { 
   useDisplaySettings, 
   TextScale, 
@@ -120,37 +121,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   // Generate Reminder Live Preview Text
   const getReminderPreviewText = () => {
-    const name = 'Dhrubesh';
+    const sampleReason = 'Groceries & Supplies';
     const amount = '₹1,250.00';
     const dueDate = reminderIncludeDueDate ? '29 Aug 2026' : '';
-    const store = reminderIncludeShopName ? shopName : '';
 
-    let greeting = reminderLang === 'bn' ? 'নমস্কার' : reminderLang === 'hi' ? 'नमस्ते' : 'Hello';
-    let body = '';
+    const defaultTemplate = DEFAULT_TEMPLATES.find(t => t.language === reminderLang && t.toneKey === (reminderTone === 'professional' ? 'due_today' : reminderTone === 'friendly' ? 'pre_due' : 'final'))
+      || DEFAULT_TEMPLATES[0];
 
-    if (reminderTone === 'professional') {
-      if (reminderLang === 'bn') {
-        body = `${greeting} ${name}, আপনার বকেয়া পরিমাণ ${amount}${dueDate ? ` (${dueDate})` : ''}। অনুগ্রহ করে আপনার সুবিধামতো পরিশোধ করুন।`;
-      } else if (reminderLang === 'hi') {
-        body = `${greeting} ${name}, आपकी बकाया राशि ${amount}${dueDate ? ` (${dueDate})` : ''} है। कृपया अपनी सुविधा अनुसार भुगतान करें।`;
-      } else {
-        body = `${greeting} ${name}, your pending payment of ${amount}${dueDate ? ` is due on ${dueDate}` : ''}. Please clear it at your earliest convenience.`;
-      }
-    } else if (reminderTone === 'friendly') {
-      if (reminderLang === 'bn') {
-        body = `${greeting} ${name}, শুধু একটি বন্ধুত্বপূর্ণ অনুস্মারক যে ${amount} টাকা এখনও বকেয়া রয়েছে।`;
-      } else if (reminderLang === 'hi') {
-        body = `${greeting} ${name}, बस एक दोस्ताना अनुस्मारक कि ${amount} अभी भी लंबित है।`;
-      } else {
-        body = `${greeting} ${name}, just a friendly reminder that ${amount} is still pending.`;
-      }
-    } else {
-      // Short / Minimal
-      body = `Reminder: ${amount} is pending${dueDate ? ` (Due: ${dueDate})` : ''}. Thank you.`;
-    }
+    let body = parseTemplate(defaultTemplate.text, {
+      name: 'Dhrubesh',
+      amount: amount,
+      dueDate: dueDate || 'due date',
+      reason: sampleReason,
+      language: reminderLang
+    });
 
-    if (store) {
-      body += `\n— ${store}`;
+    if (reminderIncludeShopName && shopName) {
+      body += `\n— ${shopName}`;
     }
 
     return body;

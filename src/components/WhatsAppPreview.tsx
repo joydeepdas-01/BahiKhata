@@ -79,7 +79,9 @@ export const WhatsAppPreview: React.FC<WhatsAppPreviewProps> = ({
       let parsed = parseTemplate(template.text, {
         name: customer.name,
         amount: formattedAmount,
-        dueDate: formattedDueDate || 'due date'
+        dueDate: formattedDueDate || 'due date',
+        reason: customer.note || 'pending account dues',
+        language: language
       });
 
       if (reminderIncludeShopName && shopName) {
