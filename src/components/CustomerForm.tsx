@@ -1,15 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { CloseIcon } from './Icons';
-import { Customer } from '../domain/customer';
+import React, { useState, useEffect, useMemo } from 'react';
+import { CloseIcon, ContactIcon, AlertCircleIcon, ArrowUpRightIcon, ArrowDownLeftIcon } from './Icons';
+import { Customer, findDuplicateCustomer } from '../domain/customer';
 import { normalizePhone } from '../domain/phoneNormalizer';
-import { rupeesToPaise, paiseToRupees } from '../domain/amountFormatter';
+import { rupeesToPaise, paiseToRupees, formatIndianCurrency } from '../domain/amountFormatter';
+import { pickContactFromDevice, ContactPhone } from '../services/contactPickerService';
+import { useDisplaySettings } from '../context/DisplaySettingsContext';
 
 interface CustomerFormProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (customer: Omit<Customer, 'id' | 'status'>) => Promise<void>;
+  onSubmit: (customer: Omit<Customer, 'id' | 'status'>, initialType?: 'credit' | 'payment') => Promise<Customer>;
   onUpdate?: (customer: Customer) => Promise<void>;
   editingCustomer?: Customer | null;
+  existingCustomers?: Customer[];
+  onViewExisting?: (customer: Customer) => void;
 }
 
 export const CustomerForm: React.FC<CustomerFormProps> = ({
@@ -17,508 +21,535 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
   onClose,
   onSubmit,
   onUpdate,
-  editingCustomer
+  editingCustomer,
+  existingCustomers = [],
+  onViewExisting
 }) => {
+  const { triggerHaptic } = useDisplaySettings();
+
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [amount, setAmount] = useState('');
+  const [transactionType, setTransactionType] = useState<'credit' | 'payment'>('credit');
   const [dueDate, setDueDate] = useState('');
   const [note, setNote] = useState('');
-  
-  // Smart paste input
-  const [quickInput, setQuickInput] = useState('');
-  const [autoFillMessage, setAutoFillMessage] = useState<string | null>(null);
+
+  // Contact picker multiple phone support & imported badge
+  const [availablePhones, setAvailablePhones] = useState<ContactPhone[]>([]);
+  const [importedContactName, setImportedContactName] = useState<string | null>(null);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPickingContact, setIsPickingContact] = useState(false);
 
+  // Initialize or reset form state
   useEffect(() => {
     if (editingCustomer) {
       setName(editingCustomer.name);
-      setPhone(editingCustomer.phone.replace('+91', ''));
-      setAmount(String(paiseToRupees(editingCustomer.amount)));
+      setPhone(editingCustomer.phone.replace(/^91/, ''));
+      setAmount(editingCustomer.amount !== 0 ? String(paiseToRupees(Math.abs(editingCustomer.amount))) : '');
+      setTransactionType(editingCustomer.amount < 0 ? 'payment' : 'credit');
       setDueDate(editingCustomer.dueDate || '');
       setNote(editingCustomer.note || '');
     } else {
       setName('');
       setPhone('');
       setAmount('');
+      setTransactionType('credit');
       setDueDate('');
       setNote('');
     }
-    setQuickInput('');
-    setAutoFillMessage(null);
+    setAvailablePhones([]);
+    setImportedContactName(null);
     setErrors({});
     setIsSubmitting(false);
   }, [editingCustomer, isOpen]);
 
+  // Real-time phone normalization
+  const phoneValidation = useMemo(() => {
+    if (!phone.trim()) return null;
+    return normalizePhone(phone);
+  }, [phone]);
+
+  // Check for duplicate customer
+  const duplicateCustomer = useMemo(() => {
+    if (!phoneValidation?.isValid || !phoneValidation.normalized) return undefined;
+    return findDuplicateCustomer(existingCustomers, phoneValidation.normalized, editingCustomer?.id);
+  }, [phoneValidation, existingCustomers, editingCustomer]);
+
   if (!isOpen) return null;
 
-  // Contact Picker API Integration (Supported in Android WebViews / Chrome)
-  const handlePickContact = async () => {
-    if ('contacts' in navigator && 'select' in (navigator as any).contacts) {
-      try {
-        const props = ['name', 'tel'];
-        const contacts = await (navigator as any).contacts.select(props, { multiple: false });
-        if (contacts && contacts.length > 0) {
-          const contact = contacts[0];
-          const contactName = contact.name && contact.name[0] ? contact.name[0] : '';
-          const contactPhone = contact.tel && contact.tel[0] ? contact.tel[0] : '';
+  // Handle Android Native or Web Contact Picker
+  const handleSelectFromContacts = async () => {
+    triggerHaptic('light');
+    setIsPickingContact(true);
+    setErrors((prev) => ({ ...prev, contact: '' }));
 
-          if (contactName) setName(contactName);
-          if (contactPhone) {
-            const phoneRes = normalizePhone(contactPhone);
-            if (phoneRes.normalized) {
-              setPhone(phoneRes.normalized.replace('+91', ''));
-            } else {
-              setPhone(contactPhone.replace(/\D/g, '').slice(-10));
-            }
-          }
-          setAutoFillMessage(`Loaded contact: ${contactName || 'Selected Contact'}`);
-        }
-      } catch (err) {
-        console.warn('Contact picker cancelled or failed', err);
-      }
-    } else {
-      alert('Contact picker is not supported on this browser/version. Please use the Quick Paste feature below!');
-    }
-  };
-
-  // Smart Contact & Text Parser (Parses Name, 10-digit Phone, Amount, and Reason from raw text)
-  const parseRawTextAndFill = (textToParse: string) => {
-    if (!textToParse.trim()) return;
-
-    let text = textToParse.trim();
-    let detectedPhone = '';
-    let detectedAmount = '';
-    let detectedName = '';
-    let detectedNote = '';
-
-    // 1. Extract 10-digit Indian Mobile Number starting with 6,7,8,9
-    const phoneMatch = text.match(/(?:\+91[\s-]?)?([6789]\d{9})/);
-    if (phoneMatch) {
-      detectedPhone = phoneMatch[1];
-      text = text.replace(phoneMatch[0], ' ');
-    }
-
-    // 2. Extract monetary amount (e.g. ₹1500, Rs. 500, 1250, 500.50)
-    const amountMatch = text.match(/(?:(?:₹|rs\.?|inr)\s*)?(\d+(?:\.\d{1,2})?)/i);
-    if (amountMatch) {
-      detectedAmount = amountMatch[1];
-      text = text.replace(amountMatch[0], ' ');
-    }
-
-    // 3. Clean remaining text for Name and Reason
-    const words = text.split(/\s+/).filter(w => w.length > 0);
-    if (words.length > 0) {
-      // First 1-2 words as Name if name is not set
-      detectedName = words.slice(0, 2).join(' ');
-      if (words.length > 2) {
-        detectedNote = words.slice(2).join(' ');
-      }
-    }
-
-    // Apply detected fields
-    if (detectedName && (!name || editingCustomer === null)) setName(detectedName);
-    if (detectedPhone) setPhone(detectedPhone);
-    if (detectedAmount) setAmount(detectedAmount);
-    if (detectedNote) setNote(prev => prev ? `${prev} ${detectedNote}` : detectedNote);
-
-    const filledParts = [];
-    if (detectedName) filledParts.push(`Name: "${detectedName}"`);
-    if (detectedPhone) filledParts.push(`Phone: +91 ${detectedPhone}`);
-    if (detectedAmount) filledParts.push(`Amount: ₹${detectedAmount}`);
-    if (detectedNote) filledParts.push(`Reason: "${detectedNote}"`);
-
-    if (filledParts.length > 0) {
-      setAutoFillMessage(`✨ Auto-filled ${filledParts.join(' | ')}`);
-    } else {
-      setAutoFillMessage('Could not extract contact details. Try entering manually.');
-    }
-  };
-
-  const handlePasteFromClipboard = async () => {
     try {
-      if (navigator.clipboard && navigator.clipboard.readText) {
-        const clipText = await navigator.clipboard.readText();
-        setQuickInput(clipText);
-        parseRawTextAndFill(clipText);
-      } else {
-        alert('Clipboard access not supported. Please paste text into the input box below!');
+      const res = await pickContactFromDevice();
+      if (res.success && res.contact) {
+        triggerHaptic('success');
+        const picked = res.contact;
+
+        if (picked.name) {
+          setName(picked.name);
+          setImportedContactName(picked.name);
+        }
+
+        if (picked.phoneNumber) {
+          const norm = normalizePhone(picked.phoneNumber);
+          if (norm.isValid && norm.normalized) {
+            setPhone(norm.normalized.replace(/^91/, ''));
+          } else {
+            const digits = picked.phoneNumber.replace(/\D/g, '').slice(-10);
+            setPhone(digits);
+          }
+        }
+
+        if (picked.allPhones && picked.allPhones.length > 1) {
+          setAvailablePhones(picked.allPhones);
+        } else {
+          setAvailablePhones([]);
+        }
+      } else if (res.error && !res.cancelled) {
+        setErrors((prev) => ({ ...prev, contact: res.error || 'Failed to select contact' }));
       }
-    } catch {
-      alert('Clipboard permission denied. Please paste text directly into the Quick Paste input!');
+    } catch (err: any) {
+      setErrors((prev) => ({ ...prev, contact: err.message || 'Error selecting contact' }));
+    } finally {
+      setIsPickingContact(false);
     }
   };
 
-  // Quick Amount Add Helpers
-  const addQuickAmount = (delta: number) => {
-    const current = parseFloat(amount) || 0;
-    const nextVal = current + delta;
-    setAmount(String(nextVal));
-  };
-
-  // Quick Date Helpers
-  const setQuickDueDate = (daysFromNow: number) => {
+  // Quick date presets
+  const handleSetDatePreset = (daysFromNow: number) => {
+    triggerHaptic('light');
     const d = new Date();
     d.setDate(d.getDate() + daysFromNow);
-    const isoDate = d.toISOString().split('T')[0];
-    setDueDate(isoDate);
+    setDueDate(d.toISOString().split('T')[0]);
   };
 
-  // Quick Reason Chips
-  const appendReasonChip = (reasonTag: string) => {
-    setNote(prev => {
-      if (!prev) return reasonTag;
-      if (prev.includes(reasonTag)) return prev;
-      return `${prev}, ${reasonTag}`;
-    });
-  };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    triggerHaptic('standard');
 
-  const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!name.trim()) {
       newErrors.name = 'Customer name is required';
     }
 
-    const phoneResult = normalizePhone(phone);
-    if (!phoneResult.isValid) {
-      newErrors.phone = phoneResult.error || 'Invalid Indian mobile number';
-    }
-
-    const numericAmount = parseFloat(amount);
-    if (!amount.trim() || isNaN(numericAmount) || numericAmount <= 0) {
-      newErrors.amount = 'Valid positive credit amount required';
-    }
-
-    if (dueDate) {
-      const selectedDate = new Date(dueDate);
-      if (isNaN(selectedDate.getTime())) {
-        newErrors.dueDate = 'Invalid due date format';
+    if (!phone.trim()) {
+      newErrors.phone = 'Mobile number is required';
+    } else {
+      const phoneRes = normalizePhone(phone);
+      if (!phoneRes.isValid) {
+        newErrors.phone = phoneRes.error || 'Invalid 10-digit mobile number';
       }
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+    let parsedPaise = 0;
+    if (amount.trim()) {
+      parsedPaise = rupeesToPaise(amount);
+      if (parsedPaise < 0) {
+        newErrors.amount = 'Amount cannot be negative';
+      }
+    }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isSubmitting) return;
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      triggerHaptic('warning');
+      return;
+    }
 
-    if (!validate()) return;
-
-    const phoneResult = normalizePhone(phone);
-    const amountInPaise = rupeesToPaise(amount);
+    const validatedPhone = normalizePhone(phone).normalized!;
 
     setIsSubmitting(true);
-
     try {
       if (editingCustomer && onUpdate) {
         await onUpdate({
           ...editingCustomer,
           name: name.trim(),
-          phone: phoneResult.normalized!,
-          amount: amountInPaise,
+          phone: validatedPhone,
           dueDate: dueDate || null,
-          note: note.trim()
+          note: note.trim() || undefined
         });
       } else {
-        await onSubmit({
-          name: name.trim(),
-          phone: phoneResult.normalized!,
-          amount: amountInPaise,
-          dueDate: dueDate || null,
-          note: note.trim()
-        });
+        await onSubmit(
+          {
+            name: name.trim(),
+            phone: validatedPhone,
+            amount: parsedPaise,
+            dueDate: dueDate || null,
+            note: note.trim() || undefined
+          },
+          transactionType
+        );
       }
+      triggerHaptic('success');
       onClose();
     } catch (err: any) {
-      setErrors({ form: err.message || 'Failed to save customer account.' });
+      setErrors({ form: err.message || 'Failed to save customer record' });
+      triggerHaptic('warning');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-bk-text-primary/40 backdrop-blur-xs select-none p-0 sm:p-4 overflow-hidden">
-      {/* Click outside backdrop */}
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-bk-text-primary/40 backdrop-blur-xs select-none p-0 sm:p-4 overflow-hidden animate-fade-in">
       <div className="absolute inset-0" onClick={onClose} />
-      
-      {/* Mobile-First Responsive Sheet Container */}
-      <form 
-        onSubmit={handleSubmit}
-        className="relative w-full max-w-lg max-h-[92dvh] sm:max-h-[88dvh] bg-bk-surface border-t sm:border border-bk-border rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col justify-between overflow-hidden animate-slide-up sm:animate-fade-in"
-      >
-        {/* Header */}
-        <div className="px-4 py-3 border-b border-bk-border flex items-center justify-between bg-bk-surface-soft shrink-0">
-          <div className="flex items-center gap-2">
-            <h2 className="font-extrabold text-bk-text-primary" style={{ fontSize: 'var(--text-font-size-heading)' }}>
-              {editingCustomer ? 'Edit Customer Ledger' : 'New Credit Entry'}
-            </h2>
-          </div>
 
-          <button 
+      <div className="relative w-full max-w-lg max-h-[92dvh] bg-bk-surface border-t sm:border border-bk-border rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col justify-between overflow-hidden animate-slide-up">
+        {/* Mobile Drag Indicator */}
+        <div className="sm:hidden w-12 h-1 bg-bk-border rounded-full mx-auto mt-2" />
+
+        {/* Modal Header */}
+        <div className="px-5 py-3.5 border-b border-bk-border flex items-center justify-between bg-bk-surface-soft/80">
+          <div>
+            <h3 className="text-base sm:text-lg font-extrabold text-bk-text-primary tracking-tight">
+              {editingCustomer ? 'Edit Customer Details' : 'Add New Customer'}
+            </h3>
+            <p className="text-xs text-bk-text-tertiary">
+              {editingCustomer ? 'Update contact & due date' : 'Create ledger entry or import from phone contacts'}
+            </p>
+          </div>
+          <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-bk-border transition-colors text-bk-text-tertiary hover:text-bk-text-primary cursor-pointer"
+            className="p-1.5 rounded-full hover:bg-bk-border/60 transition-colors text-bk-text-tertiary hover:text-bk-text-primary cursor-pointer"
           >
-            <CloseIcon size={20} />
+            <CloseIcon size={18} />
           </button>
         </div>
 
-        {/* Scrollable Content Body */}
-        <div 
-          className="flex-1 overflow-y-auto min-h-0 p-4 select-text flex flex-col space-y-3"
-        >
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 select-text">
+          {/* General Form Error */}
           {errors.form && (
-            <div className="p-3 bg-bk-status-overdue/10 border border-bk-status-overdue/30 text-bk-status-overdue rounded-bk-md text-xs font-semibold">
-              {errors.form}
+            <div className="p-3 bg-bk-status-overdue/10 border border-bk-status-overdue/20 rounded-xl text-xs text-bk-status-overdue flex items-center gap-2">
+              <AlertCircleIcon size={16} />
+              <span>{errors.form}</span>
             </div>
           )}
 
-          {/* ⚡ Quick Contact & Text Auto-Fill Header Tool */}
+          {/* Contact Picker Error */}
+          {errors.contact && (
+            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-700 flex items-center gap-2">
+              <AlertCircleIcon size={16} />
+              <span>{errors.contact}</span>
+            </div>
+          )}
+
+          {/* Native Android Contact Picker Button */}
           {!editingCustomer && (
-            <div className="bg-bk-brand-primary/5 border border-bk-brand-primary/20 rounded-xl p-3 space-y-2 select-none">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-xs text-bk-brand-primary flex items-center gap-1.5">
-                  ⚡ Express Contact & Data Auto-Fill
-                </span>
-                
-                {/* Device Contact Picker Button */}
-                <button
-                  type="button"
-                  onClick={handlePickContact}
-                  className="px-2.5 py-1 bg-bk-brand-primary text-white text-[11px] font-bold rounded-lg hover:bg-bk-brand-primary-hover transition-colors flex items-center gap-1 cursor-pointer shadow-xs"
-                >
-                  👤 Pick Contact
-                </button>
+            <div className="p-3 bg-bk-surface-soft border border-bk-border rounded-xl flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-full bg-bk-brand-primary/10 text-bk-brand-primary flex items-center justify-center shrink-0">
+                  <ContactIcon size={18} />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-bk-text-primary">
+                    {importedContactName ? `Selected: ${importedContactName}` : 'Add from Phone Contacts'}
+                  </div>
+                  <div className="text-[11px] text-bk-text-secondary">
+                    Select any contact from your Android address book
+                  </div>
+                </div>
               </div>
 
-              {/* Paste or Type Raw Text Bar */}
-              <div className="flex gap-1.5">
-                <input
-                  type="text"
-                  value={quickInput}
-                  onChange={(e) => {
-                    setQuickInput(e.target.value);
-                    parseRawTextAndFill(e.target.value);
+              <button
+                type="button"
+                onClick={handleSelectFromContacts}
+                disabled={isPickingContact}
+                className="px-3 py-1.5 bg-white border border-bk-border hover:border-bk-brand-primary text-xs font-semibold text-bk-text-primary hover:text-bk-brand-primary rounded-lg shadow-2xs transition-all cursor-pointer shrink-0 disabled:opacity-50"
+              >
+                {isPickingContact ? 'Opening...' : importedContactName ? 'Change Contact' : 'Select Contact'}
+              </button>
+            </div>
+          )}
+
+          {/* Multiple Phone Numbers Selector (if imported contact has multiple) */}
+          {availablePhones.length > 1 && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-1.5">
+              <div className="text-[11px] font-bold text-blue-900">
+                Multiple numbers found. Tap to select the WhatsApp number:
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {availablePhones.map((p, idx) => {
+                  const clean = p.number.replace(/\D/g, '').slice(-10);
+                  const isSelected = phone === clean;
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic('light');
+                        setPhone(clean);
+                      }}
+                      className={`px-2.5 py-1 text-xs rounded-full border transition-all cursor-pointer font-medium ${
+                        isSelected
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                          : 'bg-white text-blue-900 border-blue-300 hover:bg-blue-100'
+                      }`}
+                    >
+                      {p.number} ({p.type || 'Phone'})
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Duplicate Customer Alert */}
+          {duplicateCustomer && (
+            <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl space-y-1.5">
+              <div className="flex items-start gap-2 text-xs text-amber-900">
+                <AlertCircleIcon size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <strong>Customer Already Exists:</strong> "{duplicateCustomer.name}" is already registered with this mobile number.
+                  Current balance:{' '}
+                  <span className="font-bold font-mono">
+                    {formatIndianCurrency(duplicateCustomer.amount)}
+                  </span>
+                </div>
+              </div>
+              {onViewExisting && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onViewExisting(duplicateCustomer);
+                    onClose();
                   }}
-                  placeholder="Paste details: e.g. Ramesh 9876543210 1500 Groceries"
-                  className="flex-1 px-3 py-1.5 border border-bk-border rounded-lg bg-white text-xs text-bk-text-primary focus:outline-none focus:border-bk-brand-primary"
-                />
-                <button
-                  type="button"
-                  onClick={handlePasteFromClipboard}
-                  className="px-3 py-1.5 bg-white border border-bk-border hover:bg-bk-surface-soft text-bk-text-secondary text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                  className="text-xs font-bold text-amber-900 underline hover:text-amber-950 cursor-pointer"
                 >
-                  📋 Paste
+                  View Existing Ledger for {duplicateCustomer.name} &rarr;
                 </button>
-              </div>
-
-              {autoFillMessage && (
-                <p className="text-[11px] font-semibold text-bk-status-paid bg-bk-status-paid/10 p-1.5 rounded-md border border-bk-status-paid/20">
-                  {autoFillMessage}
-                </p>
               )}
             </div>
           )}
 
-          {/* Customer Name */}
-          <div className="flex flex-col space-y-1">
-            <div className="flex justify-between items-center">
-              <label className="font-bold text-bk-text-secondary uppercase tracking-wider block leading-none" style={{ fontSize: 'var(--text-font-size-label)' }}>
-                Customer Name <span className="text-bk-status-overdue">*</span>
-              </label>
-              {name && (
-                <button type="button" onClick={() => setName('')} className="text-[10px] text-bk-text-tertiary hover:text-bk-status-overdue cursor-pointer">Clear</button>
-              )}
-            </div>
+          {/* Customer Full Name */}
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-bk-text-secondary uppercase tracking-wider block">
+              Customer Name <span className="text-bk-status-overdue">*</span>
+            </label>
             <input
               type="text"
+              required
               value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Ramesh Sharma"
-              style={{ height: 'var(--ui-control-height)', fontSize: 'var(--text-font-size-input)', borderRadius: 'var(--ui-border-radius)' }}
-              className={`w-full px-3.5 border bg-white text-bk-text-primary transition-all focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary ${
-                errors.name ? 'border-bk-status-overdue' : 'border-bk-border'
+              onChange={(e) => {
+                setName(e.target.value);
+                if (errors.name) setErrors((prev) => ({ ...prev, name: '' }));
+              }}
+              placeholder="e.g. Ramesh Patel, Sharma Ji, Priya"
+              className={`w-full px-3.5 py-2.5 border rounded-xl bg-white text-bk-text-primary text-sm focus:outline-none focus:ring-2 transition-all ${
+                errors.name
+                  ? 'border-bk-status-overdue focus:ring-bk-status-overdue/20'
+                  : 'border-bk-border focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary'
               }`}
             />
-            {errors.name && <p className="text-bk-status-overdue font-semibold mt-0.5" style={{ fontSize: 'var(--text-font-size-helper)' }}>{errors.name}</p>}
+            {errors.name && <p className="text-[11px] text-bk-status-overdue font-medium">{errors.name}</p>}
           </div>
 
-          {/* WhatsApp Phone Number Input Group */}
-          <div className="flex flex-col space-y-1">
-            <div className="flex justify-between items-center">
-              <label className="font-bold text-bk-text-secondary uppercase tracking-wider block leading-none" style={{ fontSize: 'var(--text-font-size-label)' }}>
-                WhatsApp Mobile Number <span className="text-bk-status-overdue">*</span>
-              </label>
-              {phone && (
-                <button type="button" onClick={() => setPhone('')} className="text-[10px] text-bk-text-tertiary hover:text-bk-status-overdue cursor-pointer">Clear</button>
-              )}
-            </div>
-            <div className="relative flex w-full max-w-full">
-              <span 
-                style={{ height: 'var(--ui-control-height)', fontSize: 'var(--text-font-size-input)', borderTopLeftRadius: 'var(--ui-border-radius)', borderBottomLeftRadius: 'var(--ui-border-radius)' }}
-                className="px-3.5 border border-r-0 border-bk-border bg-bk-surface-soft flex items-center text-bk-text-secondary font-semibold select-none shrink-0"
-              >
+          {/* Mobile Number (+91 prefix) */}
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-bk-text-secondary uppercase tracking-wider block">
+              Mobile Number (WhatsApp) <span className="text-bk-status-overdue">*</span>
+            </label>
+            <div className="relative flex items-center">
+              <span className="absolute left-3.5 text-xs font-bold text-bk-text-secondary pointer-events-none select-none">
                 +91
               </span>
               <input
                 type="tel"
+                required
+                maxLength={12}
                 value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                placeholder="9876543210"
-                style={{ height: 'var(--ui-control-height)', fontSize: 'var(--text-font-size-input)', borderTopRightRadius: 'var(--ui-border-radius)', borderBottomRightRadius: 'var(--ui-border-radius)' }}
-                className={`flex-1 min-w-0 w-full px-3.5 border bg-white text-bk-text-primary transition-all focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary ${
-                  errors.phone ? 'border-bk-status-overdue' : 'border-bk-border'
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setPhone(cleaned);
+                  if (errors.phone) setErrors((prev) => ({ ...prev, phone: '' }));
+                }}
+                placeholder="98765 43210"
+                className={`w-full pl-12 pr-4 py-2.5 border rounded-xl bg-white text-bk-text-primary font-mono text-sm tracking-wide focus:outline-none focus:ring-2 transition-all ${
+                  errors.phone
+                    ? 'border-bk-status-overdue focus:ring-bk-status-overdue/20'
+                    : 'border-bk-border focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary'
                 }`}
               />
             </div>
-            {errors.phone && <p className="text-bk-status-overdue font-semibold mt-0.5" style={{ fontSize: 'var(--text-font-size-helper)' }}>{errors.phone}</p>}
+            {errors.phone ? (
+              <p className="text-[11px] text-bk-status-overdue font-medium">{errors.phone}</p>
+            ) : (
+              phoneValidation?.isValid && (
+                <p className="text-[11px] text-bk-status-paid font-medium">✓ Valid Indian mobile: {phoneValidation.formatted}</p>
+              )
+            )}
           </div>
 
-          {/* Credit Amount */}
-          <div className="flex flex-col space-y-1">
+          {/* Opening Balance (Only shown when adding new customer) */}
+          {!editingCustomer && (
+            <div className="space-y-2 pt-1 border-t border-bk-border/60">
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-bold text-bk-text-secondary uppercase tracking-wider">
+                  Opening Balance (Optional)
+                </label>
+                <span className="text-[11px] text-bk-text-tertiary">Can be ₹0</span>
+              </div>
+
+              {/* Transaction Type Segmented Toggle */}
+              <div className="grid grid-cols-2 p-1 bg-bk-surface-soft border border-bk-border rounded-xl gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('light');
+                    setTransactionType('credit');
+                  }}
+                  className={`py-2 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    transactionType === 'credit'
+                      ? 'bg-bk-status-overdue text-white shadow-2xs'
+                      : 'text-bk-text-secondary hover:text-bk-text-primary'
+                  }`}
+                >
+                  <ArrowUpRightIcon size={14} />
+                  <span>You Gave (Credit / Udhaar)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('light');
+                    setTransactionType('payment');
+                  }}
+                  className={`py-2 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    transactionType === 'payment'
+                      ? 'bg-bk-status-paid text-white shadow-2xs'
+                      : 'text-bk-text-secondary hover:text-bk-text-primary'
+                  }`}
+                >
+                  <ArrowDownLeftIcon size={14} />
+                  <span>You Got (Payment / Jama)</span>
+                </button>
+              </div>
+
+              {/* Amount Input */}
+              <div className="relative flex items-center">
+                <span className="absolute left-3.5 text-base font-bold text-bk-text-secondary pointer-events-none select-none">
+                  ₹
+                </span>
+                <input
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={amount}
+                  onChange={(e) => {
+                    setAmount(e.target.value);
+                    if (errors.amount) setErrors((prev) => ({ ...prev, amount: '' }));
+                  }}
+                  placeholder="0.00"
+                  className={`w-full pl-8 pr-4 py-2.5 border rounded-xl bg-white text-bk-text-primary font-mono text-base font-bold focus:outline-none focus:ring-2 transition-all ${
+                    errors.amount
+                      ? 'border-bk-status-overdue focus:ring-bk-status-overdue/20'
+                      : 'border-bk-border focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary'
+                  }`}
+                />
+              </div>
+              {errors.amount && <p className="text-[11px] text-bk-status-overdue font-medium">{errors.amount}</p>}
+            </div>
+          )}
+
+          {/* Due Date & Quick Presets */}
+          <div className="space-y-1.5 pt-1">
             <div className="flex justify-between items-center">
-              <label className="font-bold text-bk-text-secondary uppercase tracking-wider block leading-none" style={{ fontSize: 'var(--text-font-size-label)' }}>
-                Credit Amount (₹) <span className="text-bk-status-overdue">*</span>
+              <label className="text-xs font-bold text-bk-text-secondary uppercase tracking-wider">
+                Payment Due Date (Optional)
               </label>
-              {amount && (
-                <button type="button" onClick={() => setAmount('')} className="text-[10px] text-bk-text-tertiary hover:text-bk-status-overdue cursor-pointer">Clear</button>
+              {dueDate && (
+                <button
+                  type="button"
+                  onClick={() => setDueDate('')}
+                  className="text-[11px] text-bk-brand-primary hover:underline cursor-pointer"
+                >
+                  Clear date
+                </button>
               )}
             </div>
-            <div className="relative w-full">
-              <span 
-                style={{ fontSize: 'var(--text-font-size-input)' }}
-                className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-bk-text-secondary font-bold pointer-events-none select-none"
-              >
-                ₹
-              </span>
-              <input
-                type="number"
-                step="any"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="1250.00"
-                style={{ height: 'var(--ui-control-height)', fontSize: 'var(--text-font-size-input)', borderRadius: 'var(--ui-border-radius)' }}
-                className={`w-full pl-8 pr-3.5 border bg-white text-bk-text-primary transition-all focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary font-tabular-nums ${
-                  errors.amount ? 'border-bk-status-overdue' : 'border-bk-border'
-                }`}
-              />
-            </div>
-            
-            {/* Quick Fast Amount Buttons */}
-            <div className="flex flex-wrap gap-1.5 pt-1 select-none">
-              {[100, 200, 500, 1000, 2000, 5000].map(val => (
-                <button
-                  key={val}
-                  type="button"
-                  onClick={() => addQuickAmount(val)}
-                  className="px-2.5 py-1 bg-bk-surface-soft hover:bg-bk-border text-bk-text-primary text-xs font-bold rounded-md border border-bk-border transition-colors cursor-pointer"
-                >
-                  +₹{val}
-                </button>
-              ))}
-            </div>
-            {errors.amount && <p className="text-bk-status-overdue font-semibold mt-0.5" style={{ fontSize: 'var(--text-font-size-helper)' }}>{errors.amount}</p>}
-          </div>
 
-          {/* Optional Due Date */}
-          <div className="flex flex-col space-y-1">
-            <label className="font-bold text-bk-text-secondary uppercase tracking-wider block leading-none" style={{ fontSize: 'var(--text-font-size-label)' }}>
-              Due Date (Optional)
-            </label>
             <input
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              style={{ height: 'var(--ui-control-height)', fontSize: 'var(--text-font-size-input)', borderRadius: 'var(--ui-border-radius)' }}
-              className={`w-full px-3.5 border bg-white text-bk-text-primary transition-all focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary ${
-                errors.dueDate ? 'border-bk-status-overdue' : 'border-bk-border'
-              }`}
+              className="w-full px-3.5 py-2.5 border border-bk-border rounded-xl bg-white text-bk-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary transition-all"
             />
-            {/* Quick Due Date Selectors */}
-            <div className="flex flex-wrap gap-1.5 pt-1 select-none">
-              {[
-                { label: 'Today', days: 0 },
-                { label: 'Tomorrow', days: 1 },
-                { label: 'In 3 Days', days: 3 },
-                { label: 'In 1 Week', days: 7 },
-                { label: 'In 1 Month', days: 30 }
-              ].map(item => (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={() => setQuickDueDate(item.days)}
-                  className="px-2 py-1 bg-white hover:bg-bk-surface-soft text-bk-text-secondary text-[11px] font-semibold rounded-md border border-bk-border transition-colors cursor-pointer"
-                >
-                  {item.label}
-                </button>
-              ))}
+
+            {/* Quick Date Presets */}
+            <div className="flex gap-1.5 pt-0.5">
+              <button
+                type="button"
+                onClick={() => handleSetDatePreset(1)}
+                className="px-2.5 py-1 text-[11px] font-semibold bg-bk-surface-soft hover:bg-bk-border/60 text-bk-text-secondary rounded-lg border border-bk-border cursor-pointer transition-colors"
+              >
+                Tomorrow
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSetDatePreset(3)}
+                className="px-2.5 py-1 text-[11px] font-semibold bg-bk-surface-soft hover:bg-bk-border/60 text-bk-text-secondary rounded-lg border border-bk-border cursor-pointer transition-colors"
+              >
+                In 3 Days
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSetDatePreset(7)}
+                className="px-2.5 py-1 text-[11px] font-semibold bg-bk-surface-soft hover:bg-bk-border/60 text-bk-text-secondary rounded-lg border border-bk-border cursor-pointer transition-colors"
+              >
+                In 1 Week
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSetDatePreset(30)}
+                className="px-2.5 py-1 text-[11px] font-semibold bg-bk-surface-soft hover:bg-bk-border/60 text-bk-text-secondary rounded-lg border border-bk-border cursor-pointer transition-colors"
+              >
+                In 1 Month
+              </button>
             </div>
-            {errors.dueDate && <p className="text-bk-status-overdue font-semibold mt-0.5" style={{ fontSize: 'var(--text-font-size-helper)' }}>{errors.dueDate}</p>}
           </div>
 
-          {/* Ledger Reason / Notes */}
-          <div className="flex flex-col space-y-1">
-            <label className="font-bold text-bk-text-secondary uppercase tracking-wider block leading-none" style={{ fontSize: 'var(--text-font-size-label)' }}>
-              Reason / Item Details (Mentioned in Reminder Message)
+          {/* Note / Memo */}
+          <div className="space-y-1 pt-1">
+            <label className="text-xs font-bold text-bk-text-secondary uppercase tracking-wider block">
+              Notes / Description (Optional)
             </label>
-            <textarea
+            <input
+              type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="e.g. Groceries & Milk bill"
-              style={{ minHeight: '70px', fontSize: 'var(--text-font-size-input)', borderRadius: 'var(--ui-border-radius)' }}
-              className="w-full p-3 border border-bk-border bg-white text-bk-text-primary transition-all focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary resize-none"
+              placeholder="e.g. Grocery bill #104, Tailoring order, Monthly fees"
+              className="w-full px-3.5 py-2.5 border border-bk-border rounded-xl bg-white text-bk-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary transition-all"
             />
-            {/* Quick Common Reason Chips */}
-            <div className="flex flex-wrap gap-1.5 pt-1 select-none">
-              {[
-                '🛒 Groceries',
-                '🥛 Dairy/Milk',
-                '🌾 Ration',
-                '📱 Recharge',
-                '💊 Medicines',
-                '🧵 Tailoring',
-                '🔧 Repair Work',
-                '💸 Cash Credit'
-              ].map(tag => (
-                <button
-                  key={tag}
-                  type="button"
-                  onClick={() => appendReasonChip(tag)}
-                  className="px-2 py-1 bg-bk-surface-soft hover:bg-bk-border text-bk-text-secondary text-[11px] font-medium rounded-md border border-bk-border/80 transition-colors cursor-pointer"
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
           </div>
-        </div>
+        </form>
 
-        {/* Touch-Friendly Action Footer */}
-        <div className="p-4 pb-safe border-t border-bk-border bg-bk-surface-soft flex gap-3 shrink-0">
+        {/* Modal Footer Actions */}
+        <div className="p-4 border-t border-bk-border bg-bk-surface-soft/80 flex items-center justify-end gap-2.5">
           <button
             type="button"
             onClick={onClose}
-            disabled={isSubmitting}
-            style={{ height: 'var(--ui-button-height)', fontSize: 'var(--text-font-size-input)', borderRadius: 'var(--ui-border-radius)' }}
-            className="flex-1 min-w-0 border border-bk-border bg-white hover:bg-bk-surface-soft text-bk-text-secondary hover:text-bk-text-primary font-semibold transition-colors duration-150 cursor-pointer text-center disabled:opacity-50 disabled:pointer-events-none"
+            className="px-4 py-2.5 border border-bk-border rounded-xl text-xs font-semibold text-bk-text-secondary hover:text-bk-text-primary hover:bg-white transition-all cursor-pointer"
           >
             Cancel
           </button>
           <button
-            type="submit"
+            type="button"
+            onClick={handleSubmit}
             disabled={isSubmitting}
-            style={{ height: 'var(--ui-button-height)', fontSize: 'var(--text-font-size-input)', borderRadius: 'var(--ui-border-radius)' }}
-            className="flex-1 min-w-0 bg-bk-brand-primary hover:bg-bk-brand-primary-hover active:bg-bk-brand-primary-pressed text-white font-semibold transition-all duration-150 cursor-pointer text-center shadow-sm active:translate-y-[1px] disabled:opacity-50 disabled:pointer-events-none"
+            className="px-6 py-2.5 bg-bk-brand-primary hover:bg-bk-brand-primary-hover active:bg-bk-brand-primary-pressed text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer disabled:opacity-50"
           >
-            {isSubmitting ? 'Saving...' : (editingCustomer ? 'Save Changes' : 'Record Credit')}
+            {isSubmitting ? 'Saving...' : editingCustomer ? 'Update Customer' : 'Save Customer'}
           </button>
         </div>
-      </form>
+      </div>
     </div>
   );
 };

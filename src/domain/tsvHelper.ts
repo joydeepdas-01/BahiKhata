@@ -1,6 +1,4 @@
-import { Customer } from './customer';
 import { normalizePhone } from './phoneNormalizer';
-import { rupeesToPaise } from './amountFormatter';
 
 export interface TSVRowValidation {
   rowNumber: number;
@@ -65,7 +63,7 @@ export function parseTSV(tsvText: string): TSVRowValidation[] {
       const cell = cells[idx] || '';
 
       // Strict regex date check (prevents negative values like -500 from matching date parser)
-      const isDatePattern = /^\d{4}-\d{2}-\d{2}$/.test(cell) || /^\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4}$/.test(cell);
+      const isDatePattern = /^\d{4}-\d{2}-\d{2}$/.test(cell) || /^\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}$/.test(cell);
       if (isDatePattern && dateIdx === -1) {
         dateIdx = idx;
         break;

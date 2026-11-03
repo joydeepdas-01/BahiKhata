@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { CloseIcon, WhatsAppIcon } from './Icons';
 import { Customer } from '../domain/customer';
-import { ToneKey, LanguageKey, Template, DEFAULT_TEMPLATES, parseTemplate } from '../domain/templates';
+import { ToneKey, LanguageKey, DEFAULT_TEMPLATES, parseTemplate } from '../domain/templates';
 import { formatIndianCurrency } from '../domain/amountFormatter';
 import { formatDisplayDate } from '../domain/dateClassifier';
 import { useDisplaySettings } from '../context/DisplaySettingsContext';
@@ -19,245 +19,248 @@ export const WhatsAppPreview: React.FC<WhatsAppPreviewProps> = ({
   customer,
   onReminderSent
 }) => {
-  const [language, setLanguage] = useState<LanguageKey>('en');
+  const { reminderLang, reminderIncludeDueDate, reminderIncludeShopName, shopName, triggerHaptic } = useDisplaySettings();
+
+  const [language, setLanguage] = useState<LanguageKey>(reminderLang);
   const [tone, setTone] = useState<ToneKey>('due_today');
-  const [messageText, setMessageText] = useState('');
-  
-  // App opened status flag
-  const [whatsappOpened, setWhatsappOpened] = useState(false);
+  const [editedText, setEditedText] = useState<string | null>(null);
+  const [isSent, setIsSent] = useState(false);
 
-  // Load custom templates and initialize language
-  const [templates, setTemplates] = useState<Template[]>([]);
+  // Compute default suggested tone based on customer due date
+  const suggestedTone: ToneKey = useMemo(() => {
+    if (!customer?.dueDate) return 'pre_due';
+    const today = new Date().toISOString().split('T')[0];
+    if (customer.dueDate === today) return 'due_today';
+    if (customer.dueDate < today) return 'overdue';
+    return 'pre_due';
+  }, [customer?.dueDate]);
 
-  const { reminderLang, reminderIncludeDueDate, reminderIncludeShopName, shopName } = useDisplaySettings();
+  // Active tone defaults to suggested tone unless manually switched
+  const currentTone = tone || suggestedTone;
 
-  useEffect(() => {
-    if (!customer) return;
+  // Generate rendered reminder message
+  const generatedMessage = useMemo(() => {
+    if (!customer) return '';
 
-    setLanguage(reminderLang);
+    const template =
+      DEFAULT_TEMPLATES.find((t) => t.language === language && t.toneKey === currentTone) ||
+      DEFAULT_TEMPLATES[0];
 
-    // Set tone based on due date classification
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-    
-    if (!customer.dueDate) {
-      setTone('pre_due');
-    } else if (customer.dueDate === todayStr) {
-      setTone('due_today');
-    } else if (customer.dueDate < todayStr) {
-      setTone('overdue');
-    } else {
-      setTone('pre_due');
+    const formattedAmount = formatIndianCurrency(customer.amount);
+    const formattedDueDate = reminderIncludeDueDate && customer.dueDate ? formatDisplayDate(customer.dueDate) : '';
+
+    let parsed = parseTemplate(template.text, {
+      name: customer.name,
+      amount: formattedAmount,
+      dueDate: formattedDueDate || 'due date',
+      reason: customer.note || '',
+      language: language
+    });
+
+    if (reminderIncludeShopName && shopName) {
+      parsed += `\n— ${shopName}`;
     }
 
-    // Load templates
-    const saved = localStorage.getItem('bk_custom_templates');
-    if (saved) {
-      try {
-        setTemplates(JSON.parse(saved));
-      } catch {
-        setTemplates([...DEFAULT_TEMPLATES]);
-      }
-    } else {
-      setTemplates([...DEFAULT_TEMPLATES]);
-    }
-    
-    setWhatsappOpened(false);
-  }, [customer, isOpen, reminderLang]);
+    return parsed;
+  }, [customer, language, currentTone, reminderIncludeDueDate, reminderIncludeShopName, shopName]);
 
-  // Re-generate message text when language, tone, customer details, or templates change
-  useEffect(() => {
-    if (!customer || templates.length === 0) return;
-
-    const template = templates.find(t => t.language === language && t.toneKey === tone) 
-      || DEFAULT_TEMPLATES.find(t => t.language === language && t.toneKey === tone);
-
-    if (template) {
-      const formattedAmount = formatIndianCurrency(customer.amount);
-      const formattedDueDate = (reminderIncludeDueDate && customer.dueDate) ? formatDisplayDate(customer.dueDate) : '';
-      
-      let parsed = parseTemplate(template.text, {
-        name: customer.name,
-        amount: formattedAmount,
-        dueDate: formattedDueDate || 'due date',
-        reason: customer.note || 'pending account dues',
-        language: language
-      });
-
-      if (reminderIncludeShopName && shopName) {
-        parsed += `\n— ${shopName}`;
-      }
-
-      setMessageText(parsed);
-    }
-  }, [customer, language, tone, templates, reminderIncludeDueDate, reminderIncludeShopName, shopName]);
+  const activeMessageText = editedText !== null ? editedText : generatedMessage;
 
   if (!isOpen || !customer) return null;
 
   const handleSend = () => {
+    triggerHaptic('standard');
+
     // 1. Encode text
-    const encodedText = encodeURIComponent(messageText);
-    
+    const encodedText = encodeURIComponent(activeMessageText);
+
     // 2. Build deep link
     const waLink = `https://wa.me/${customer.phone}?text=${encodedText}`;
-    
-    // 3. Mark in UI
-    setWhatsappOpened(true);
-    
-    // 4. Update reminder timestamp in database
+
+    // 3. Mark sent timestamp in local ledger
     const timestamp = new Date().toISOString();
     onReminderSent(customer.id, timestamp);
+    setIsSent(true);
 
-    // 5. Open URL link
+    // 4. Open WhatsApp
     window.open(waLink, '_blank');
   };
 
-  const formattedPhone = customer.phone.startsWith('91') && customer.phone.length === 12
-    ? `+91 ${customer.phone.substring(2, 7)} ${customer.phone.substring(7)}`
-    : customer.phone;
-
-  // Get initials for profile placeholder
-  const initials = customer.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  const formattedPhone =
+    customer.phone.startsWith('91') && customer.phone.length === 12
+      ? `+91 ${customer.phone.substring(2, 7)} ${customer.phone.substring(7)}`
+      : customer.phone;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end bg-bk-text-primary/40 backdrop-blur-xs animate-fade-in select-none p-0 sm:p-4 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-bk-text-primary/40 backdrop-blur-xs select-none p-0 sm:p-4 overflow-hidden animate-fade-in">
       <div className="absolute inset-0" onClick={onClose} />
-      
-      {/* Mobile-First Sliding Sheet Panel */}
-      <div className="relative w-full max-w-xl max-h-[90dvh] sm:max-h-[85dvh] bg-bk-surface border-t sm:border border-bk-border rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col justify-between overflow-hidden animate-slide-up sm:animate-fade-in">
+
+      <div className="relative w-full max-w-lg max-h-[92dvh] bg-bk-surface border-t sm:border border-bk-border rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col justify-between overflow-hidden animate-slide-up">
+        {/* Mobile Drag Indicator */}
+        <div className="sm:hidden w-12 h-1 bg-bk-border rounded-full mx-auto mt-2" />
+
         {/* Header */}
-        <div className="p-bk-md border-b border-bk-border flex items-center justify-between bg-bk-surface-soft">
-          <h2 className="text-lg font-extrabold text-bk-text-primary">Prepare Payment Reminder</h2>
-          <button 
+        <div className="px-5 py-3.5 border-b border-bk-border flex items-center justify-between bg-bk-surface-soft/80 shrink-0">
+          <div>
+            <h3 className="text-base sm:text-lg font-extrabold text-bk-text-primary tracking-tight">
+              Prepare WhatsApp Reminder
+            </h3>
+            <p className="text-xs text-bk-text-tertiary">
+              For {customer.name} ({formattedPhone})
+            </p>
+          </div>
+          <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-bk-border transition-colors text-bk-text-tertiary hover:text-bk-text-primary cursor-pointer"
+            className="p-1.5 rounded-full hover:bg-bk-border/60 transition-colors text-bk-text-tertiary hover:text-bk-text-primary cursor-pointer"
           >
             <CloseIcon size={18} />
           </button>
         </div>
 
-        {/* Composer & Realistic Mockup Container */}
-        <div className="flex-1 overflow-y-auto p-bk-md space-y-bk-md flex flex-col justify-between select-text">
-          <div className="space-y-bk-md text-sm">
-            {/* Tone Selector */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-bk-text-secondary uppercase tracking-wider block">Reminder Tone Level</label>
-              <div className="grid grid-cols-4 gap-2">
-                {(['pre_due', 'due_today', 'overdue', 'final'] as const).map(tKey => {
-                  const label = tKey === 'pre_due' ? 'Gentle' : tKey === 'due_today' ? 'Due Today' : tKey === 'overdue' ? 'Overdue' : 'Final';
-                  return (
-                    <button
-                      key={tKey}
-                      type="button"
-                      onClick={() => setTone(tKey)}
-                      className={`py-2 rounded-bk-md border font-bold text-xs text-center cursor-pointer transition-all duration-150 ${
-                        tone === tKey 
-                          ? 'border-bk-brand-primary bg-bk-brand-primary/5 text-bk-brand-primary shadow-xs' 
-                          : 'border-bk-border bg-white text-bk-text-secondary hover:bg-bk-surface-soft'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Language Selector */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-bk-text-secondary uppercase tracking-wider block">Message Language</label>
-              <div className="grid grid-cols-3 gap-2">
-                {(['en', 'hi', 'bn'] as const).map(langKey => (
-                  <button
-                    key={langKey}
-                    type="button"
-                    onClick={() => setLanguage(langKey)}
-                    className={`py-2 rounded-bk-md border font-bold text-xs text-center cursor-pointer transition-all duration-150 ${
-                      language === langKey 
-                        ? 'border-bk-brand-primary bg-bk-brand-primary/5 text-bk-brand-primary shadow-xs' 
-                        : 'border-bk-border bg-white text-bk-text-secondary hover:bg-bk-surface-soft'
-                    }`}
-                  >
-                    {langKey === 'en' ? 'English' : langKey === 'hi' ? 'हिंदी (Hindi)' : 'বাংলা (Bengali)'}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Customizer Text Box */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-bk-text-secondary uppercase tracking-wider block">Message Text Editor</label>
-              <textarea
-                value={messageText}
-                onChange={(e) => setMessageText(e.target.value)}
-                className="w-full text-xs p-3 border border-bk-border rounded-bk-md bg-white text-bk-text-primary h-28 focus:outline-none focus:ring-1 focus:ring-bk-brand-primary focus:border-bk-brand-primary resize-none leading-relaxed"
-              />
+        {/* Composer & Preview Body */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 select-text">
+          {/* Tone Selector */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-bk-text-secondary uppercase tracking-wider block">
+              Reminder Tone
+            </label>
+            <div className="grid grid-cols-4 gap-1.5">
+              {(
+                [
+                  { id: 'pre_due', label: 'Gentle' },
+                  { id: 'due_today', label: 'Due Today' },
+                  { id: 'overdue', label: 'Overdue' },
+                  { id: 'final', label: 'Final' }
+                ] as const
+              ).map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('light');
+                    setTone(t.id);
+                    setEditedText(null); // Reset manual edits when tone changes
+                  }}
+                  className={`py-2 px-1 text-center text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                    currentTone === t.id
+                      ? 'bg-bk-brand-primary text-white border-bk-brand-primary shadow-2xs'
+                      : 'bg-white text-bk-text-secondary border-bk-border hover:bg-bk-surface-soft'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Premium WhatsApp Message Mockup Bubble */}
-          <div className="space-y-2 mt-4 select-none">
-            <span className="text-[10px] font-bold text-bk-text-tertiary uppercase tracking-wider block">WhatsApp Output Preview</span>
-            <div className="w-full bg-[#efeae2] border border-bk-border rounded-bk-lg overflow-hidden relative shadow-inner">
-              {/* WhatsApp Mock Navbar */}
-              <div className="bg-[#075e54] text-white p-2.5 flex items-center gap-2.5">
-                <span className="text-white">←</span>
-                {/* Avatar Placeholder */}
-                <div className="w-8 h-8 rounded-full bg-[#128c7e] border border-white/20 flex items-center justify-center text-xs font-black text-white">
-                  {initials}
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold leading-tight text-white">{customer.name}</h4>
-                  <p className="text-[9px] text-white/80 leading-none">{formattedPhone}</p>
-                </div>
+          {/* Language Selector */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-bk-text-secondary uppercase tracking-wider block">
+              Message Language
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {(
+                [
+                  { id: 'en', label: 'English' },
+                  { id: 'hi', label: 'हिंदी (Hindi)' },
+                  { id: 'bn', label: 'বাংলা (Bengali)' }
+                ] as const
+              ).map((lang) => (
+                <button
+                  key={lang.id}
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('light');
+                    setLanguage(lang.id);
+                    setEditedText(null); // Reset manual edits when language changes
+                  }}
+                  className={`py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                    language === lang.id
+                      ? 'bg-bk-brand-primary text-white border-bk-brand-primary shadow-2xs'
+                      : 'bg-white text-bk-text-secondary border-bk-border hover:bg-bk-surface-soft'
+                  }`}
+                >
+                  {lang.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Realistic WhatsApp Chat Bubble Mockup */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-bk-text-secondary uppercase tracking-wider">
+                Live WhatsApp Message Preview
+              </label>
+              {editedText !== null && (
+                <button
+                  type="button"
+                  onClick={() => setEditedText(null)}
+                  className="text-[11px] text-bk-brand-primary hover:underline cursor-pointer"
+                >
+                  Reset to Template
+                </button>
+              )}
+            </div>
+
+            {/* Chat Canvas */}
+            <div className="bg-[#efeae2] p-4 rounded-2xl border border-[#d1d7db] shadow-inner space-y-2">
+              <div className="text-center">
+                <span className="text-[10px] font-bold text-gray-500 bg-white/70 px-2 py-0.5 rounded-full shadow-2xs uppercase">
+                  Today
+                </span>
               </div>
 
-              {/* Wallpaper chat area */}
-              <div className="relative p-bk-md h-40 overflow-y-auto flex flex-col justify-end">
-                {/* Wallpaper pattern backing */}
-                <div className="absolute inset-0 opacity-[0.03] bg-repeat pointer-events-none" style={{ backgroundImage: 'url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png")' }} />
-                
-                {/* Outgoing Message bubble */}
-                <div className="relative self-end max-w-[85%] bg-[#d9fdd3] text-[#111b21] rounded-bk-lg p-2.5 shadow-xs text-xs border border-[#c1e2b9] whitespace-pre-wrap leading-relaxed">
-                  {messageText}
-                  {/* Bubble Mock Arrow */}
-                  <div className="absolute top-0 -right-1 w-2 h-2.5 bg-[#d9fdd3] border-r border-[#c1e2b9]" style={{ clipPath: 'polygon(0 0, 100% 0, 0 100%)' }} />
-                  
-                  {/* Message timestamp */}
-                  <div className="text-[8px] text-[#667781] text-right mt-1 font-semibold">
-                    {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • Prepared
-                  </div>
+              {/* Chat Bubble */}
+              <div className="max-w-[85%] ml-auto bg-[#d9fdd3] text-[#111b21] p-3 rounded-2xl rounded-tr-xs shadow-xs text-xs sm:text-sm leading-relaxed whitespace-pre-wrap select-text font-sans">
+                {activeMessageText}
+                <div className="text-[9px] text-[#667781] text-right mt-1 select-none flex items-center justify-end gap-1">
+                  <span>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span className="text-blue-500">✓✓</span>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Footer Actions */}
-        <div className="p-4 pb-safe border-t border-bk-border bg-bk-surface-soft flex flex-col gap-2 shrink-0">
-          {whatsappOpened && (
-            <div className="p-2 border border-bk-brand-accent/20 bg-bk-brand-accent/5 text-bk-brand-accent rounded-bk-md text-[10px] font-bold text-center flex items-center justify-center gap-1">
-              <span>ℹ️</span> WhatsApp link opened. Send the message in WhatsApp to finish delivery!
+          {/* Optional Direct Editor */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-bk-text-secondary uppercase">
+              Edit Message Text Manually
+            </label>
+            <textarea
+              rows={3}
+              value={activeMessageText}
+              onChange={(e) => setEditedText(e.target.value)}
+              className="w-full p-2.5 border border-bk-border rounded-xl text-xs bg-white text-bk-text-primary focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary"
+            />
+          </div>
+
+          {isSent && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-xl text-xs text-green-900 flex items-center gap-2">
+              <span>✓ WhatsApp opened. Reminder timestamp saved to customer ledger.</span>
             </div>
           )}
+        </div>
 
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 h-10 border border-bk-border bg-white hover:bg-bk-surface-soft text-bk-text-secondary hover:text-bk-text-primary font-semibold rounded-bk-md transition-colors duration-150 cursor-pointer text-center text-sm"
-            >
-              Back
-            </button>
-            <button
-              onClick={handleSend}
-              className="flex-2 h-10 bg-[#25d366] hover:bg-[#128c7e] text-white font-bold rounded-bk-md transition-colors duration-150 cursor-pointer flex items-center justify-center gap-2 text-sm shadow-sm active:translate-y-[1px]"
-            >
-              <WhatsAppIcon size={18} />
-              Open in WhatsApp
-            </button>
-          </div>
+        {/* Modal Footer */}
+        <div className="p-4 border-t border-bk-border bg-bk-surface-soft/80 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2.5 border border-bk-border rounded-xl text-xs font-bold text-bk-text-secondary hover:text-bk-text-primary bg-white cursor-pointer shadow-2xs"
+          >
+            Close
+          </button>
+
+          <button
+            type="button"
+            onClick={handleSend}
+            className="px-6 py-2.5 bg-[#25d366] hover:bg-[#20ba5a] active:bg-[#1caa51] text-white text-xs font-extrabold rounded-xl flex items-center gap-2 shadow-sm cursor-pointer transition-all active:translate-y-[1px]"
+          >
+            <WhatsAppIcon size={16} />
+            <span>Open in WhatsApp &rarr;</span>
+          </button>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CloseIcon, TrashIcon } from './Icons';
+import { CloseIcon, TrashIcon, DownloadIcon, UploadIcon, InfoIcon, WhatsAppIcon, AlertCircleIcon } from './Icons';
 import { Customer } from '../domain/customer';
 import { exportToCSV, parseCSV } from '../domain/csvHelper';
 import { formatIndianCurrency } from '../domain/amountFormatter';
@@ -8,13 +8,10 @@ import {
   useDisplaySettings, 
   TextScale, 
   DensityMode, 
-  ContentWidthMode, 
   ThemeMode, 
   HapticMode, 
   ReminderLangMode, 
-  ReminderToneMode, 
-  WhatsappBehaviorMode, 
-  DefaultFilterMode 
+  ReminderToneMode 
 } from '../context/DisplaySettingsContext';
 
 interface SettingsModalProps {
@@ -25,7 +22,7 @@ interface SettingsModalProps {
   onClearAllData: () => Promise<void>;
 }
 
-type TabType = 'appearance' | 'reminders' | 'preferences' | 'data' | 'about';
+type TabType = 'business' | 'appearance' | 'data' | 'about';
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
@@ -37,7 +34,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const {
     textScale,
     density,
-    contentWidth,
     theme,
     reduceMotion,
     hapticFeedback,
@@ -46,12 +42,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     reminderIncludeDueDate,
     reminderIncludeShopName,
     shopName,
-    whatsappBehavior,
-    defaultFilter,
-    confirmDelete,
     setTextScale,
     setDensity,
-    setContentWidth,
     setTheme,
     setReduceMotion,
     setHapticFeedback,
@@ -60,27 +52,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setReminderIncludeDueDate,
     setReminderIncludeShopName,
     setShopName,
-    setWhatsappBehavior,
-    setDefaultFilter,
-    setConfirmDelete,
     triggerHaptic,
     resetAppearance,
     resetReminderSettings
   } = useDisplaySettings();
 
-  const [activeTab, setActiveTab] = useState<TabType>('appearance');
+  const [activeTab, setActiveTab] = useState<TabType>('business');
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [confirmInput, setConfirmInput] = useState('');
 
   if (!isOpen) return null;
 
   const totalPendingPaise = customers
-    .filter(c => c.status === 'pending')
+    .filter((c) => c.amount > 0)
     .reduce((acc, c) => acc + c.amount, 0);
 
   const handleExportCSV = () => {
     triggerHaptic('light');
     exportToCSV(customers);
+  };
+
+  const handleExportJSON = () => {
+    triggerHaptic('light');
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(customers, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', dataStr);
+    downloadAnchor.setAttribute('download', `bahikhata_backup_${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
   };
 
   const handleImportCSVClick = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -110,29 +112,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     e.target.value = '';
   };
 
-  const handleClearDataClick = async () => {
-    if (window.confirm('CRITICAL WARNING: This will permanently erase ALL customer records from local storage. Are you absolutely sure?')) {
-      triggerHaptic('warning');
-      await onClearAllData();
-      alert('All local ledger data has been permanently cleared.');
-      onClose();
+  const handleClearDataFinal = async () => {
+    if (confirmInput.toUpperCase() !== 'DELETE') {
+      alert('Please type DELETE to confirm data erasure.');
+      return;
     }
+
+    triggerHaptic('warning');
+    await onClearAllData();
+    setShowClearConfirm(false);
+    setConfirmInput('');
+    alert('All local data has been permanently cleared.');
+    onClose();
   };
 
-  // Generate Reminder Live Preview Text
+  // Reminder sample preview generator
   const getReminderPreviewText = () => {
-    const sampleReason = 'Groceries & Supplies';
-    const amount = '₹1,250.00';
-    const dueDate = reminderIncludeDueDate ? '29 Aug 2026' : '';
-
-    const defaultTemplate = DEFAULT_TEMPLATES.find(t => t.language === reminderLang && t.toneKey === (reminderTone === 'professional' ? 'due_today' : reminderTone === 'friendly' ? 'pre_due' : 'final'))
-      || DEFAULT_TEMPLATES[0];
+    const defaultTemplate =
+      DEFAULT_TEMPLATES.find(
+        (t) =>
+          t.language === reminderLang &&
+          t.toneKey === (reminderTone === 'friendly' ? 'pre_due' : reminderTone === 'professional' ? 'due_today' : 'overdue')
+      ) || DEFAULT_TEMPLATES[0];
 
     let body = parseTemplate(defaultTemplate.text, {
-      name: 'Dhrubesh',
-      amount: amount,
-      dueDate: dueDate || 'due date',
-      reason: sampleReason,
+      name: 'Ramesh Patel',
+      amount: '₹1,500.00',
+      dueDate: reminderIncludeDueDate ? 'Tomorrow' : '',
+      reason: 'Grocery items',
       language: reminderLang
     });
 
@@ -144,42 +151,49 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-bk-text-primary/40 backdrop-blur-xs select-none p-0 sm:p-4 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-bk-text-primary/40 backdrop-blur-xs select-none p-0 sm:p-4 overflow-hidden animate-fade-in">
       <div className="absolute inset-0" onClick={onClose} />
-      
-      {/* Settings Modal Container */}
-      <div className="relative w-full max-w-lg max-h-[90dvh] sm:max-h-[85dvh] bg-bk-surface border-t sm:border border-bk-border rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col justify-between overflow-hidden animate-slide-up sm:animate-fade-in">
-        
+
+      <div className="relative w-full max-w-xl max-h-[92dvh] bg-bk-surface border-t sm:border border-bk-border rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col justify-between overflow-hidden animate-slide-up">
+        {/* Mobile Drag Indicator */}
+        <div className="sm:hidden w-12 h-1 bg-bk-border rounded-full mx-auto mt-2" />
+
         {/* Modal Header */}
-        <div className="px-4 py-3 border-b border-bk-border flex items-center justify-between bg-bk-surface-soft shrink-0">
-          <h2 className="font-extrabold text-bk-text-primary" style={{ fontSize: 'var(--app-heading-scale)' }}>
-            Settings & Customization
-          </h2>
-          <button 
+        <div className="px-5 py-3.5 border-b border-bk-border flex items-center justify-between bg-bk-surface-soft/80 shrink-0">
+          <div>
+            <h3 className="text-base sm:text-lg font-extrabold text-bk-text-primary tracking-tight">
+              Settings & Preferences
+            </h3>
+            <p className="text-xs text-bk-text-tertiary">
+              Customize business details, reminders, appearance, and backup
+            </p>
+          </div>
+          <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-bk-border transition-colors text-bk-text-tertiary hover:text-bk-text-primary cursor-pointer"
+            className="p-1.5 rounded-full hover:bg-bk-border/60 transition-colors text-bk-text-tertiary hover:text-bk-text-primary cursor-pointer"
           >
-            <CloseIcon size={20} />
+            <CloseIcon size={18} />
           </button>
         </div>
 
-        {/* Settings Category Navigation Tabs */}
-        <div className="flex border-b border-bk-border bg-bk-surface-soft shrink-0 overflow-x-auto scrollbar-none px-2">
-          {[
-            { id: 'appearance', label: 'Appearance' },
-            { id: 'reminders', label: 'Reminders' },
-            { id: 'preferences', label: 'Preferences' },
-            { id: 'data', label: 'Data & CSV' },
-            { id: 'about', label: 'About' }
-          ].map(tab => (
+        {/* Navigation Tabs Bar */}
+        <div className="flex border-b border-bk-border bg-bk-surface px-4 gap-2 overflow-x-auto scrollbar-none shrink-0 select-none">
+          {(
+            [
+              { id: 'business', label: 'Business & Reminders' },
+              { id: 'appearance', label: 'Appearance' },
+              { id: 'data', label: 'Data & Backup' },
+              { id: 'about', label: 'About & Privacy' }
+            ] as const
+          ).map((tab) => (
             <button
               key={tab.id}
               onClick={() => {
                 triggerHaptic('light');
-                setActiveTab(tab.id as TabType);
+                setActiveTab(tab.id);
               }}
-              className={`py-2.5 px-3 border-b-2 font-extrabold text-xs whitespace-nowrap cursor-pointer transition-colors ${
+              className={`py-3 px-2 text-xs font-bold border-b-2 whitespace-nowrap cursor-pointer transition-all ${
                 activeTab === tab.id
                   ? 'border-bk-brand-primary text-bk-brand-primary'
                   : 'border-transparent text-bk-text-secondary hover:text-bk-text-primary'
@@ -190,517 +204,475 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           ))}
         </div>
 
-        {/* Scroll Content Body */}
-        <div className="flex-1 overflow-y-auto min-h-0 p-4 space-y-4 text-xs select-text">
-
-          {/* 1. APPEARANCE & DISPLAY */}
-          {activeTab === 'appearance' && (
+        {/* Tab Content Body */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5 select-text">
+          {/* TAB 1: Business & Reminders */}
+          {activeTab === 'business' && (
             <div className="space-y-4">
-              
-              {/* Text Size Section with Live Aa Previews */}
-              <div className="bg-bk-surface-soft border border-bk-border rounded-xl p-3.5 space-y-2.5">
-                <span className="font-extrabold text-bk-text-primary uppercase tracking-wider block">Text Size (Typography Only)</span>
-                <p className="text-[11px] text-bk-text-tertiary">Adjusts typography readable scale without modifying layout geometry or screen bounds.</p>
-
-                <div className="grid grid-cols-4 gap-1.5 select-none pt-1">
-                  {[
-                    { id: 'small', label: 'Small', sample: 'Aa' },
-                    { id: 'standard', label: 'Standard', sample: 'Aa' },
-                    { id: 'large', label: 'Large', sample: 'Aa' },
-                    { id: 'extra-large', label: 'XL', sample: 'Aa' }
-                  ].map(item => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => {
-                        triggerHaptic('light');
-                        setTextScale(item.id as TextScale);
-                      }}
-                      className={`py-2 px-1 rounded-lg border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-                        textScale === item.id
-                          ? 'border-bk-brand-primary bg-bk-brand-primary/10 text-bk-brand-primary shadow-xs'
-                          : 'border-bk-border bg-white text-bk-text-secondary hover:bg-bk-surface-soft'
-                      }`}
-                    >
-                      <span className={`font-black ${item.id === 'small' ? 'text-xs' : item.id === 'standard' ? 'text-sm' : item.id === 'large' ? 'text-base' : 'text-lg'}`}>
-                        {item.sample}
-                      </span>
-                      <span className="text-[10px] font-bold">{item.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* UI Density */}
-              <div className="bg-bk-surface-soft border border-bk-border rounded-xl p-3.5 space-y-2.5">
-                <span className="font-extrabold text-bk-text-primary uppercase tracking-wider block">UI Density</span>
-                <p className="text-[11px] text-bk-text-tertiary">Adjusts card paddings and component gaps subtle spacing.</p>
-
-                <div className="grid grid-cols-3 gap-2 select-none">
-                  {[
-                    { id: 'compact', label: 'Compact', desc: 'Tighter spacing' },
-                    { id: 'standard', label: 'Standard', desc: 'Balanced default' },
-                    { id: 'comfortable', label: 'Comfortable', desc: 'Spacious padding' }
-                  ].map(item => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => {
-                        triggerHaptic('light');
-                        setDensity(item.id as DensityMode);
-                      }}
-                      className={`py-2 px-2 rounded-lg border flex flex-col items-center justify-center transition-all cursor-pointer ${
-                        density === item.id
-                          ? 'border-bk-brand-primary bg-bk-brand-primary/10 text-bk-brand-primary shadow-xs'
-                          : 'border-bk-border bg-white text-bk-text-secondary hover:bg-bk-surface-soft'
-                      }`}
-                    >
-                      <span className="font-bold text-xs">{item.label}</span>
-                      <span className="text-[9px] text-bk-text-tertiary mt-0.5">{item.desc}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Content Width / Outer Screen Margin */}
-              <div className="bg-bk-surface-soft border border-bk-border rounded-xl p-3.5 space-y-2.5">
-                <span className="font-extrabold text-bk-text-primary uppercase tracking-wider block">Content Width & Screen Outer Margin</span>
-                <p className="text-[11px] text-bk-text-tertiary">Prevents cards and controls from touching extreme screen edges on Android.</p>
-
-                <div className="grid grid-cols-3 gap-2 select-none">
-                  {[
-                    { id: 'full', label: 'Full Width', margin: '0px' },
-                    { id: 'standard', label: 'Standard (10px)', margin: '10px' },
-                    { id: 'comfortable', label: 'Comfortable (16px)', margin: '16px' }
-                  ].map(item => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => {
-                        triggerHaptic('light');
-                        setContentWidth(item.id as ContentWidthMode);
-                      }}
-                      className={`py-2 px-2 rounded-lg border flex flex-col items-center justify-center transition-all cursor-pointer ${
-                        contentWidth === item.id
-                          ? 'border-bk-brand-primary bg-bk-brand-primary/10 text-bk-brand-primary shadow-xs'
-                          : 'border-bk-border bg-white text-bk-text-secondary hover:bg-bk-surface-soft'
-                      }`}
-                    >
-                      <span className="font-bold text-xs">{item.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Theme / Appearance */}
-              <div className="bg-bk-surface-soft border border-bk-border rounded-xl p-3.5 space-y-2.5">
-                <span className="font-extrabold text-bk-text-primary uppercase tracking-wider block">Theme & Appearance</span>
-                
-                <div className="grid grid-cols-3 gap-2 select-none">
-                  {[
-                    { id: 'system', label: 'System Default' },
-                    { id: 'light', label: 'Light Theme' },
-                    { id: 'dark', label: 'Dark Theme' }
-                  ].map(t => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => {
-                        triggerHaptic('light');
-                        setTheme(t.id as ThemeMode);
-                      }}
-                      className={`py-2 px-2 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
-                        theme === t.id
-                          ? 'border-bk-brand-primary bg-bk-brand-primary/10 text-bk-brand-primary shadow-xs'
-                          : 'border-bk-border bg-white text-bk-text-secondary hover:bg-bk-surface-soft'
-                      }`}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Motion & Accessibility Toggles */}
-              <div className="bg-bk-surface-soft border border-bk-border rounded-xl p-3.5 space-y-3">
-                <span className="font-extrabold text-bk-text-primary uppercase tracking-wider block">Motion & Feedback</span>
-
-                <label className="flex items-center justify-between cursor-pointer select-none">
-                  <span className="font-semibold text-bk-text-primary">Reduce Animations & Transitions</span>
-                  <input
-                    type="checkbox"
-                    checked={reduceMotion}
-                    onChange={(e) => {
-                      triggerHaptic('light');
-                      setReduceMotion(e.target.checked);
-                    }}
-                    className="w-4 h-4 text-bk-brand-primary rounded border-bk-border focus:ring-bk-brand-primary accent-bk-brand-primary cursor-pointer"
-                  />
+              {/* Business Name */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-bk-text-secondary uppercase tracking-wider block">
+                  Shop / Business Name
                 </label>
-
-                <div className="flex items-center justify-between border-t border-bk-border/60 pt-2">
-                  <span className="font-semibold text-bk-text-primary">Haptic Vibration Feedback</span>
-                  <div className="flex gap-1">
-                    {(['off', 'light', 'standard'] as HapticMode[]).map(h => (
-                      <button
-                        key={h}
-                        type="button"
-                        onClick={() => {
-                          setHapticFeedback(h);
-                          if (h !== 'off') triggerHaptic('standard');
-                        }}
-                        className={`py-1 px-2 rounded-md border text-[11px] font-bold ${
-                          hapticFeedback === h
-                            ? 'border-bk-brand-primary bg-bk-brand-primary/10 text-bk-brand-primary'
-                            : 'border-bk-border bg-white text-bk-text-secondary'
-                        }`}
-                      >
-                        {h === 'off' ? 'Off' : h === 'light' ? 'Light' : 'Std'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <input
+                  type="text"
+                  value={shopName}
+                  onChange={(e) => setShopName(e.target.value)}
+                  placeholder="e.g. My General Store, Ramesh Kirana"
+                  className="w-full px-3.5 py-2.5 border border-bk-border rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary"
+                />
+                <p className="text-[11px] text-bk-text-tertiary">
+                  This name will be signed at the bottom of WhatsApp payment reminder messages.
+                </p>
               </div>
 
-              {/* Reset Appearance Action */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm('Reset appearance settings to default recommended values?')) {
-                    triggerHaptic('warning');
-                    resetAppearance();
-                  }
-                }}
-                className="w-full py-2 px-3 border border-bk-border bg-white hover:bg-bk-surface-soft text-bk-brand-primary font-bold rounded-xl transition-colors cursor-pointer text-center"
-              >
-                Reset Appearance Settings
-              </button>
-
-            </div>
-          )}
-
-          {/* 2. REMINDER SETTINGS */}
-          {activeTab === 'reminders' && (
-            <div className="space-y-4">
-              
-              {/* Language Selector */}
-              <div className="bg-bk-surface-soft border border-bk-border rounded-xl p-3.5 space-y-2">
-                <span className="font-extrabold text-bk-text-primary uppercase tracking-wider block">Reminder Language</span>
-                <div className="grid grid-cols-3 gap-2 select-none">
-                  {[
-                    { id: 'en', label: 'English' },
-                    { id: 'hi', label: 'हिंदी (Hindi)' },
-                    { id: 'bn', label: 'বাংলা (Bengali)' }
-                  ].map(l => (
+              {/* Reminder Language */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-bk-text-secondary uppercase tracking-wider block">
+                  Default Reminder Language
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(
+                    [
+                      { id: 'en', label: 'English' },
+                      { id: 'hi', label: 'हिंदी (Hindi)' },
+                      { id: 'bn', label: 'বাংলা (Bengali)' }
+                    ] as const
+                  ).map((lang) => (
                     <button
-                      key={l.id}
+                      key={lang.id}
                       type="button"
                       onClick={() => {
                         triggerHaptic('light');
-                        setReminderLang(l.id as ReminderLangMode);
+                        setReminderLang(lang.id as ReminderLangMode);
                       }}
-                      className={`py-2 px-2 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
-                        reminderLang === l.id
-                          ? 'border-bk-brand-primary bg-bk-brand-primary/10 text-bk-brand-primary shadow-xs'
-                          : 'border-bk-border bg-white text-bk-text-secondary hover:bg-bk-surface-soft'
+                      className={`py-2 px-3 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                        reminderLang === lang.id
+                          ? 'bg-bk-brand-primary text-white border-bk-brand-primary shadow-2xs'
+                          : 'bg-white text-bk-text-secondary border-bk-border hover:bg-bk-surface-soft'
                       }`}
                     >
-                      {l.label}
+                      {lang.label}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Template / Tone Selector */}
-              <div className="bg-bk-surface-soft border border-bk-border rounded-xl p-3.5 space-y-2">
-                <span className="font-extrabold text-bk-text-primary uppercase tracking-wider block">Reminder Tone & Style</span>
-                <div className="grid grid-cols-3 gap-2 select-none">
-                  {[
-                    { id: 'professional', label: 'Professional' },
-                    { id: 'friendly', label: 'Friendly' },
-                    { id: 'short', label: 'Short / Minimal' }
-                  ].map(t => (
+              {/* Reminder Tone */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-bk-text-secondary uppercase tracking-wider block">
+                  Default Reminder Tone
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(
+                    [
+                      { id: 'friendly', label: 'Gentle / Pre-due' },
+                      { id: 'professional', label: 'Standard / Due Today' },
+                      { id: 'short', label: 'Urgent / Overdue' }
+                    ] as const
+                  ).map((tone) => (
                     <button
-                      key={t.id}
+                      key={tone.id}
                       type="button"
                       onClick={() => {
                         triggerHaptic('light');
-                        setReminderTone(t.id as ReminderToneMode);
+                        setReminderTone(tone.id as ReminderToneMode);
                       }}
-                      className={`py-2 px-2 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
-                        reminderTone === t.id
-                          ? 'border-bk-brand-primary bg-bk-brand-primary/10 text-bk-brand-primary shadow-xs'
-                          : 'border-bk-border bg-white text-bk-text-secondary hover:bg-bk-surface-soft'
+                      className={`py-2 px-3 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                        reminderTone === tone.id
+                          ? 'bg-bk-brand-primary text-white border-bk-brand-primary shadow-2xs'
+                          : 'bg-white text-bk-text-secondary border-bk-border hover:bg-bk-surface-soft'
                       }`}
                     >
-                      {t.label}
+                      {tone.label}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Variables & Business Name Inputs */}
-              <div className="bg-bk-surface-soft border border-bk-border rounded-xl p-3.5 space-y-3">
-                <span className="font-extrabold text-bk-text-primary uppercase tracking-wider block">Message Variables & Details</span>
-
-                <label className="flex items-center justify-between cursor-pointer select-none">
-                  <span className="font-semibold text-bk-text-primary">Include Due Date in Reminder</span>
+              {/* Toggles */}
+              <div className="p-3 bg-bk-surface-soft border border-bk-border rounded-xl space-y-2.5">
+                <label className="flex items-center justify-between text-xs font-bold text-bk-text-primary cursor-pointer select-none">
+                  <span>Include Due Date in reminder message</span>
                   <input
                     type="checkbox"
                     checked={reminderIncludeDueDate}
-                    onChange={(e) => {
-                      triggerHaptic('light');
-                      setReminderIncludeDueDate(e.target.checked);
-                    }}
-                    className="w-4 h-4 text-bk-brand-primary rounded border-bk-border focus:ring-bk-brand-primary accent-bk-brand-primary cursor-pointer"
+                    onChange={(e) => setReminderIncludeDueDate(e.target.checked)}
+                    className="w-4 h-4 rounded text-bk-brand-primary focus:ring-bk-brand-primary cursor-pointer"
                   />
                 </label>
 
-                <div className="space-y-2 border-t border-bk-border/60 pt-2">
-                  <label className="flex items-center justify-between cursor-pointer select-none">
-                    <span className="font-semibold text-bk-text-primary">Include Business / Store Name</span>
-                    <input
-                      type="checkbox"
-                      checked={reminderIncludeShopName}
-                      onChange={(e) => {
-                        triggerHaptic('light');
-                        setReminderIncludeShopName(e.target.checked);
-                      }}
-                      className="w-4 h-4 text-bk-brand-primary rounded border-bk-border focus:ring-bk-brand-primary accent-bk-brand-primary cursor-pointer"
-                    />
-                  </label>
-
-                  {reminderIncludeShopName && (
-                    <input
-                      type="text"
-                      value={shopName}
-                      onChange={(e) => setShopName(e.target.value)}
-                      placeholder="e.g. Gupta General Store"
-                      className="w-full px-3 py-2 border border-bk-border rounded-lg bg-white text-bk-text-primary text-xs focus:outline-none focus:border-bk-brand-primary"
-                    />
-                  )}
-                </div>
+                <label className="flex items-center justify-between text-xs font-bold text-bk-text-primary cursor-pointer select-none">
+                  <span>Include Business Name signature in footer</span>
+                  <input
+                    type="checkbox"
+                    checked={reminderIncludeShopName}
+                    onChange={(e) => setReminderIncludeShopName(e.target.checked)}
+                    className="w-4 h-4 rounded text-bk-brand-primary focus:ring-bk-brand-primary cursor-pointer"
+                  />
+                </label>
               </div>
 
-              {/* WhatsApp Behavior Option */}
-              <div className="bg-bk-surface-soft border border-bk-border rounded-xl p-3.5 space-y-2">
-                <span className="font-extrabold text-bk-text-primary uppercase tracking-wider block">WhatsApp Action Behavior</span>
-                <div className="grid grid-cols-2 gap-2 select-none">
-                  {[
-                    { id: 'confirm', label: 'Open with Preview' },
-                    { id: 'direct', label: 'Open Directly' }
-                  ].map(wb => (
-                    <button
-                      key={wb.id}
-                      type="button"
-                      onClick={() => {
-                        triggerHaptic('light');
-                        setWhatsappBehavior(wb.id as WhatsappBehaviorMode);
-                      }}
-                      className={`py-2 px-2 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
-                        whatsappBehavior === wb.id
-                          ? 'border-bk-brand-primary bg-bk-brand-primary/10 text-bk-brand-primary shadow-xs'
-                          : 'border-bk-border bg-white text-bk-text-secondary hover:bg-bk-surface-soft'
-                      }`}
-                    >
-                      {wb.label}
-                    </button>
-                  ))}
+              {/* Message Live Preview Box */}
+              <div className="space-y-1">
+                <div className="text-[11px] font-bold text-bk-text-secondary uppercase tracking-wider flex items-center gap-1.5">
+                  <WhatsAppIcon size={14} className="text-bk-status-paid" />
+                  <span>Sample WhatsApp Message Preview</span>
                 </div>
-              </div>
-
-              {/* Dynamic Live Reminder Preview Card */}
-              <div className="border-t border-bk-border pt-2 space-y-1.5">
-                <span className="text-[10px] font-bold text-bk-text-tertiary uppercase tracking-wider block">Live Reminder Message Preview</span>
-                <div className="bg-bk-surface border border-bk-border rounded-xl p-3.5 text-xs text-bk-text-primary leading-relaxed shadow-xs whitespace-pre-wrap font-sans">
+                <div className="p-3 bg-green-50 border border-green-200 rounded-xl text-xs text-green-950 whitespace-pre-wrap font-sans leading-relaxed">
                   {getReminderPreviewText()}
                 </div>
               </div>
 
-              {/* Reset Reminder Settings Action */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm('Reset reminder settings to standard defaults?')) {
-                    triggerHaptic('warning');
-                    resetReminderSettings();
-                  }
-                }}
-                className="w-full py-2 px-3 border border-bk-border bg-white hover:bg-bk-surface-soft text-bk-brand-primary font-bold rounded-xl transition-colors cursor-pointer text-center"
-              >
-                Reset Reminder Settings
-              </button>
-
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={resetReminderSettings}
+                  className="text-xs text-bk-text-tertiary hover:text-bk-text-primary underline cursor-pointer"
+                >
+                  Reset Reminder Defaults
+                </button>
+              </div>
             </div>
           )}
 
-          {/* 3. PREFERENCES */}
-          {activeTab === 'preferences' && (
+          {/* TAB 2: Appearance */}
+          {activeTab === 'appearance' && (
             <div className="space-y-4">
-              
-              {/* Default Home Filter */}
-              <div className="bg-bk-surface-soft border border-bk-border rounded-xl p-3.5 space-y-2">
-                <span className="font-extrabold text-bk-text-primary uppercase tracking-wider block">Default Home Filter</span>
-                <div className="grid grid-cols-3 gap-1.5 select-none">
-                  {[
-                    { id: 'all', label: 'All Accounts' },
-                    { id: 'pending', label: 'Pending Dues' },
-                    { id: 'due_today', label: 'Due Today' },
-                    { id: 'overdue', label: 'Overdue' },
-                    { id: 'paid', label: 'Settled Paid' }
-                  ].map(df => (
+              {/* Text Scale */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-bk-text-secondary uppercase tracking-wider block">
+                  Text Size (Typography Scale)
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(
+                    [
+                      { id: 'standard', label: 'Standard (100%)' },
+                      { id: 'large', label: 'Large (110%)' },
+                      { id: 'extra-large', label: 'Extra Large (120%)' }
+                    ] as const
+                  ).map((scale) => (
                     <button
-                      key={df.id}
+                      key={scale.id}
                       type="button"
                       onClick={() => {
                         triggerHaptic('light');
-                        setDefaultFilter(df.id as DefaultFilterMode);
+                        setTextScale(scale.id as TextScale);
                       }}
-                      className={`py-2 px-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center ${
-                        defaultFilter === df.id
-                          ? 'border-bk-brand-primary bg-bk-brand-primary/10 text-bk-brand-primary shadow-xs'
-                          : 'border-bk-border bg-white text-bk-text-secondary hover:bg-bk-surface-soft'
+                      className={`py-2 px-3 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                        textScale === scale.id
+                          ? 'bg-bk-brand-primary text-white border-bk-brand-primary shadow-2xs'
+                          : 'bg-white text-bk-text-secondary border-bk-border hover:bg-bk-surface-soft'
                       }`}
                     >
-                      {df.label}
+                      {scale.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-bk-text-tertiary">
+                  Scales text size cleanly without distorting layout width or button dimensions.
+                </p>
+              </div>
+
+              {/* Density Mode */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-bk-text-secondary uppercase tracking-wider block">
+                  Layout Density
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(
+                    [
+                      { id: 'standard', label: 'Standard' },
+                      { id: 'compact', label: 'Compact' }
+                    ] as const
+                  ).map((d) => (
+                    <button
+                      key={d.id}
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic('light');
+                        setDensity(d.id as DensityMode);
+                      }}
+                      className={`py-2 px-3 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                        density === d.id
+                          ? 'bg-bk-brand-primary text-white border-bk-brand-primary shadow-2xs'
+                          : 'bg-white text-bk-text-secondary border-bk-border hover:bg-bk-surface-soft'
+                      }`}
+                    >
+                      {d.label}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Safety Confirmation Toggle */}
-              <div className="bg-bk-surface-soft border border-bk-border rounded-xl p-3.5 space-y-2">
-                <span className="font-extrabold text-bk-text-primary uppercase tracking-wider block">Data Safety Toggles</span>
-
-                <label className="flex items-center justify-between cursor-pointer select-none">
-                  <span className="font-semibold text-bk-text-primary">Confirm Before Deleting Customer Ledger</span>
-                  <input
-                    type="checkbox"
-                    checked={confirmDelete}
-                    onChange={(e) => {
-                      triggerHaptic('light');
-                      setConfirmDelete(e.target.checked);
-                    }}
-                    className="w-4 h-4 text-bk-brand-primary rounded border-bk-border focus:ring-bk-brand-primary accent-bk-brand-primary cursor-pointer"
-                  />
+              {/* Theme Mode */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-bk-text-secondary uppercase tracking-wider block">
+                  App Theme
                 </label>
-              </div>
-
-            </div>
-          )}
-
-          {/* 4. DATA & STORAGE */}
-          {activeTab === 'data' && (
-            <div className="space-y-4">
-              
-              {/* Storage Overview */}
-              <div className="bg-bk-surface-soft border border-bk-border rounded-xl p-3.5 space-y-2">
-                <span className="font-extrabold text-bk-text-primary uppercase tracking-wider block">Local Ledger Overview</span>
-                <div className="grid grid-cols-2 gap-3 pt-1">
-                  <div className="bg-white p-3 rounded-lg border border-bk-border">
-                    <span className="text-[10px] text-bk-text-tertiary font-bold uppercase block">Total Customers</span>
-                    <span className="text-lg font-black text-bk-text-primary font-tabular-nums">{customers.length}</span>
-                  </div>
-                  <div className="bg-white p-3 rounded-lg border border-bk-border">
-                    <span className="text-[10px] text-bk-text-tertiary font-bold uppercase block">Total Outstanding Dues</span>
-                    <span className="text-lg font-black text-bk-brand-primary font-tabular-nums">{formatIndianCurrency(totalPendingPaise)}</span>
-                  </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {(
+                    [
+                      { id: 'system', label: 'System Default' },
+                      { id: 'light', label: 'Light' },
+                      { id: 'dark', label: 'Dark' }
+                    ] as const
+                  ).map((th) => (
+                    <button
+                      key={th.id}
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic('light');
+                        setTheme(th.id as ThemeMode);
+                      }}
+                      className={`py-2 px-3 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                        theme === th.id
+                          ? 'bg-bk-brand-primary text-white border-bk-brand-primary shadow-2xs'
+                          : 'bg-white text-bk-text-secondary border-bk-border hover:bg-bk-surface-soft'
+                      }`}
+                    >
+                      {th.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              {/* CSV Import/Export */}
-              <div className="bg-bk-surface-soft border border-bk-border rounded-xl p-3.5 space-y-3">
-                <span className="font-extrabold text-bk-text-primary uppercase tracking-wider block">CSV Data Backup & Import</span>
-
-                {importError && (
-                  <div className="p-2.5 bg-bk-status-overdue/10 border border-bk-status-overdue/30 text-bk-status-overdue rounded-lg text-xs font-semibold">
-                    {importError}
-                  </div>
-                )}
-                {importSuccess && (
-                  <div className="p-2.5 bg-bk-status-paid/10 border border-bk-status-paid/30 text-bk-status-paid rounded-lg text-xs font-semibold">
-                    {importSuccess}
-                  </div>
-                )}
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleExportCSV}
-                    className="flex-1 py-2 px-3 border border-bk-border bg-white hover:bg-bk-surface-soft text-bk-text-primary text-xs font-semibold rounded-lg transition-colors cursor-pointer text-center"
-                  >
-                    Export CSV Backup
-                  </button>
-
-                  <label className="flex-1 py-2 px-3 border border-bk-border bg-white hover:bg-bk-surface-soft text-bk-text-primary text-xs font-semibold rounded-lg transition-colors cursor-pointer text-center">
-                    Import CSV Backup
-                    <input
-                      type="file"
-                      accept=".csv"
-                      onChange={handleImportCSVClick}
-                      className="hidden"
-                    />
-                  </label>
+              {/* Haptic Feedback */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-bk-text-secondary uppercase tracking-wider block">
+                  Vibration & Haptic Feedback
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(
+                    [
+                      { id: 'standard', label: 'Standard' },
+                      { id: 'light', label: 'Subtle' },
+                      { id: 'off', label: 'Off' }
+                    ] as const
+                  ).map((h) => (
+                    <button
+                      key={h.id}
+                      type="button"
+                      onClick={() => {
+                        setHapticFeedback(h.id as HapticMode);
+                        if (h.id !== 'off' && typeof navigator !== 'undefined' && navigator.vibrate) {
+                          navigator.vibrate(20);
+                        }
+                      }}
+                      className={`py-2 px-3 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                        hapticFeedback === h.id
+                          ? 'bg-bk-brand-primary text-white border-bk-brand-primary shadow-2xs'
+                          : 'bg-white text-bk-text-secondary border-bk-border hover:bg-bk-surface-soft'
+                      }`}
+                    >
+                      {h.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              {/* Danger Zone */}
-              <div className="bg-bk-status-overdue/5 border border-bk-status-overdue/20 rounded-xl p-3.5 space-y-2">
-                <span className="font-extrabold text-bk-status-overdue uppercase tracking-wider block">Danger Zone</span>
+              {/* Reduce Motion */}
+              <label className="p-3 bg-bk-surface-soft border border-bk-border rounded-xl flex items-center justify-between text-xs font-bold text-bk-text-primary cursor-pointer select-none">
+                <span>Reduce Animations and Transitions</span>
+                <input
+                  type="checkbox"
+                  checked={reduceMotion}
+                  onChange={(e) => setReduceMotion(e.target.checked)}
+                  className="w-4 h-4 rounded text-bk-brand-primary focus:ring-bk-brand-primary cursor-pointer"
+                />
+              </label>
+
+              <div className="flex justify-end pt-1">
                 <button
-                  onClick={handleClearDataClick}
-                  className="w-full py-2.5 px-3 bg-bk-status-overdue text-white hover:bg-bk-brand-primary-pressed text-xs font-bold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+                  type="button"
+                  onClick={resetAppearance}
+                  className="text-xs text-bk-text-tertiary hover:text-bk-text-primary underline cursor-pointer"
                 >
-                  <TrashIcon size={14} />
-                  Permanently Clear All Local Ledger Data
+                  Reset Appearance Defaults
                 </button>
               </div>
-
             </div>
           )}
 
-          {/* 5. ABOUT */}
+          {/* TAB 3: Data & Backup */}
+          {activeTab === 'data' && (
+            <div className="space-y-4">
+              {/* Data Summary Stats Card */}
+              <div className="p-4 bg-bk-surface-soft border border-bk-border rounded-xl space-y-2">
+                <div className="text-xs font-bold text-bk-text-primary uppercase tracking-wider">
+                  Storage Summary
+                </div>
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <div className="text-lg font-bold font-mono text-bk-text-primary">{customers.length}</div>
+                    <div className="text-[11px] text-bk-text-secondary">Customer Ledgers</div>
+                  </div>
+                  <div>
+                    <div className="text-lg font-bold font-mono text-bk-status-overdue">
+                      {formatIndianCurrency(totalPendingPaise)}
+                    </div>
+                    <div className="text-[11px] text-bk-text-secondary">Total Active Dues</div>
+                  </div>
+                </div>
+                <p className="text-[11px] text-bk-text-tertiary pt-1 border-t border-bk-border">
+                  🔒 Stored 100% locally on your device in IndexedDB (`bahikhata_db`). Zero cloud servers.
+                </p>
+              </div>
+
+              {/* Backup & Export */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-bk-text-secondary uppercase tracking-wider block">
+                  Export & Backup Ledger
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={handleExportCSV}
+                    className="p-3 bg-white border border-bk-border hover:border-bk-brand-primary rounded-xl text-xs font-bold text-bk-text-primary flex items-center justify-center gap-2 cursor-pointer shadow-2xs transition-all"
+                  >
+                    <DownloadIcon size={16} />
+                    <span>Export as CSV</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleExportJSON}
+                    className="p-3 bg-white border border-bk-border hover:border-bk-brand-primary rounded-xl text-xs font-bold text-bk-text-primary flex items-center justify-center gap-2 cursor-pointer shadow-2xs transition-all"
+                  >
+                    <DownloadIcon size={16} />
+                    <span>Backup Full JSON</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Import CSV */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-bk-text-secondary uppercase tracking-wider block">
+                  Import Customers from CSV
+                </label>
+                <label className="p-3 bg-white border border-dashed border-bk-border hover:border-bk-brand-primary rounded-xl flex items-center justify-center gap-2 text-xs font-bold text-bk-brand-primary cursor-pointer transition-all">
+                  <UploadIcon size={16} />
+                  <span>Choose CSV File to Import</span>
+                  <input
+                    type="file"
+                    accept=".csv,text/csv"
+                    onChange={handleImportCSVClick}
+                    className="hidden"
+                  />
+                </label>
+
+                {importSuccess && (
+                  <p className="text-xs text-bk-status-paid font-bold p-2 bg-green-50 rounded-lg">
+                    {importSuccess}
+                  </p>
+                )}
+                {importError && (
+                  <p className="text-xs text-bk-status-overdue font-bold p-2 bg-red-50 rounded-lg">
+                    {importError}
+                  </p>
+                )}
+              </div>
+
+              {/* Danger Zone: Clear Data */}
+              <div className="pt-2 border-t border-bk-border space-y-2">
+                <label className="text-xs font-bold text-bk-status-overdue uppercase tracking-wider block">
+                  Danger Zone
+                </label>
+
+                {!showClearConfirm ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowClearConfirm(true)}
+                    className="w-full p-2.5 bg-red-50 hover:bg-red-100 text-bk-status-overdue border border-red-200 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                  >
+                    <TrashIcon size={15} />
+                    <span>Erase All Khata Data</span>
+                  </button>
+                ) : (
+                  <div className="p-3.5 bg-red-50 border-2 border-red-300 rounded-xl space-y-2.5 animate-fade-in">
+                    <div className="flex items-start gap-2 text-xs text-red-900 font-bold">
+                      <AlertCircleIcon size={16} className="text-red-700 shrink-0 mt-0.5" />
+                      <span>Permanently delete all customer records and transactions? This cannot be undone.</span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] text-red-800 font-semibold block">
+                        Type <strong>DELETE</strong> to confirm:
+                      </label>
+                      <input
+                        type="text"
+                        value={confirmInput}
+                        onChange={(e) => setConfirmInput(e.target.value)}
+                        placeholder="Type DELETE"
+                        className="w-full px-3 py-1.5 border border-red-300 rounded-lg text-xs font-mono uppercase bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                      />
+                    </div>
+
+                    <div className="flex gap-2 justify-end pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowClearConfirm(false);
+                          setConfirmInput('');
+                        }}
+                        className="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-bold text-gray-700 cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleClearDataFinal}
+                        className="px-4 py-1.5 bg-bk-status-overdue text-white rounded-lg text-xs font-bold shadow-2xs cursor-pointer hover:bg-red-700"
+                      >
+                        Permanently Delete Everything
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: About & Privacy */}
           {activeTab === 'about' && (
-            <div className="bg-bk-surface-soft border border-bk-border rounded-xl p-4 space-y-3">
-              <div className="space-y-1">
-                <h3 className="font-extrabold text-bk-text-primary text-base">BahiKhata (बहीखाता)</h3>
-                <p className="text-bk-text-tertiary text-xs">Offline-First Mobile Ledger & Udhaar Management System</p>
+            <div className="space-y-4">
+              <div className="p-4 bg-bk-surface-soft border border-bk-border rounded-xl space-y-2">
+                <h4 className="text-sm font-extrabold text-bk-text-primary">BahiKhata (बहीखाता)</h4>
+                <p className="text-xs text-bk-text-secondary leading-relaxed">
+                  A modern, privacy-focused, 100% offline-first digital ledger for shopkeepers, tutors, and small merchants.
+                </p>
+                <div className="text-[11px] font-mono text-bk-text-tertiary pt-1 border-t border-bk-border">
+                  Version 2.0.0 • React 19 • TailwindCSS v4 • Capacitor v8 • IndexedDB
+                </div>
               </div>
 
-              <div className="border-t border-bk-border/60 pt-3 space-y-2">
-                <div className="flex justify-between">
-                  <span className="font-semibold text-bk-text-secondary">App Version</span>
-                  <span className="font-bold text-bk-text-primary">1.0.0 (Production Release)</span>
+              <div className="p-3.5 bg-white border border-bk-border rounded-xl space-y-2">
+                <div className="text-xs font-bold text-bk-text-primary flex items-center gap-1.5">
+                  <InfoIcon size={15} className="text-bk-brand-primary" />
+                  <span>Privacy & Security Guarantees</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="font-semibold text-bk-text-secondary">Storage Engine</span>
-                  <span className="font-bold text-bk-status-paid">IndexedDB (100% Offline)</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-semibold text-bk-text-secondary">Data Privacy</span>
-                  <span className="font-bold text-bk-status-paid">Private Local Device Storage</span>
-                </div>
+                <ul className="text-xs text-bk-text-secondary space-y-1 list-disc pl-4 leading-relaxed">
+                  <li><strong>Zero Cloud Tracking:</strong> No remote servers, no user accounts, no analytics.</li>
+                  <li><strong>Integer Paise Precision:</strong> Currency dues are calculated in integer paise to eliminate floating-point rounding errors.</li>
+                  <li><strong>Device Privacy:</strong> Contacts selected via the Android contact picker are processed entirely on-device and never transmitted anywhere.</li>
+                  <li><strong>Controlled Sending:</strong> Reminders open standard WhatsApp links on your device; you always retain final control before sending.</li>
+                </ul>
               </div>
             </div>
           )}
-
         </div>
 
-        {/* Footer Close Button */}
-        <div className="p-4 pb-safe border-t border-bk-border bg-bk-surface-soft shrink-0">
+        {/* Modal Footer */}
+        <div className="p-3.5 border-t border-bk-border bg-bk-surface-soft/80 flex items-center justify-between text-xs text-bk-text-tertiary">
+          <span>BahiKhata • 100% Offline Digital Ledger</span>
           <button
             type="button"
             onClick={onClose}
-            style={{ 
-              height: 'var(--ui-button-height)', 
-              fontSize: 'var(--app-input-scale)',
-              borderRadius: 'var(--ui-border-radius)'
-            }}
-            className="w-full bg-bk-brand-primary text-white font-semibold cursor-pointer transition-all shadow-sm active:translate-y-[1px]"
+            className="px-4 py-2 bg-white border border-bk-border rounded-xl font-bold text-bk-text-secondary hover:text-bk-text-primary transition-all cursor-pointer shadow-2xs"
           >
-            Close Settings
+            Done
           </button>
         </div>
-
       </div>
     </div>
   );

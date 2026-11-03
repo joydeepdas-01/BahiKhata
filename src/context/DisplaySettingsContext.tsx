@@ -1,19 +1,16 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-export type TextScale = 'small' | 'standard' | 'large' | 'extra-large';
-export type DensityMode = 'compact' | 'standard' | 'comfortable';
-export type ContentWidthMode = 'full' | 'standard' | 'comfortable';
+export type TextScale = 'standard' | 'large' | 'extra-large';
+export type DensityMode = 'compact' | 'standard';
 export type ThemeMode = 'system' | 'light' | 'dark';
 export type HapticMode = 'off' | 'light' | 'standard';
 export type ReminderLangMode = 'en' | 'hi' | 'bn';
 export type ReminderToneMode = 'professional' | 'friendly' | 'short';
-export type WhatsappBehaviorMode = 'direct' | 'confirm';
 export type DefaultFilterMode = 'all' | 'pending' | 'due_today' | 'overdue' | 'paid';
 
 export interface AppPreferencesState {
   textScale: TextScale;
   density: DensityMode;
-  contentWidth: ContentWidthMode;
   theme: ThemeMode;
   reduceMotion: boolean;
   hapticFeedback: HapticMode;
@@ -22,15 +19,13 @@ export interface AppPreferencesState {
   reminderIncludeDueDate: boolean;
   reminderIncludeShopName: boolean;
   shopName: string;
-  whatsappBehavior: WhatsappBehaviorMode;
   defaultFilter: DefaultFilterMode;
   confirmDelete: boolean;
 }
 
-interface DisplaySettingsContextType extends AppPreferencesState {
+export interface DisplaySettingsContextType extends AppPreferencesState {
   setTextScale: (val: TextScale) => void;
   setDensity: (val: DensityMode) => void;
-  setContentWidth: (val: ContentWidthMode) => void;
   setTheme: (val: ThemeMode) => void;
   setReduceMotion: (val: boolean) => void;
   setHapticFeedback: (val: HapticMode) => void;
@@ -39,7 +34,6 @@ interface DisplaySettingsContextType extends AppPreferencesState {
   setReminderIncludeDueDate: (val: boolean) => void;
   setReminderIncludeShopName: (val: boolean) => void;
   setShopName: (val: string) => void;
-  setWhatsappBehavior: (val: WhatsappBehaviorMode) => void;
   setDefaultFilter: (val: DefaultFilterMode) => void;
   setConfirmDelete: (val: boolean) => void;
 
@@ -53,7 +47,6 @@ const DisplaySettingsContext = createContext<DisplaySettingsContextType | undefi
 const KEYS = {
   TEXT_SCALE: 'bk_text_scale',
   DENSITY: 'bk_density',
-  CONTENT_WIDTH: 'bk_content_width',
   THEME: 'bk_theme',
   REDUCE_MOTION: 'bk_reduce_motion',
   HAPTIC_FEEDBACK: 'bk_haptic_feedback',
@@ -62,7 +55,6 @@ const KEYS = {
   REMINDER_DUE_DATE: 'bk_reminder_include_due_date',
   REMINDER_SHOP_NAME: 'bk_reminder_include_shop_name',
   SHOP_NAME: 'bk_shop_name',
-  WHATSAPP_BEHAVIOR: 'bk_whatsapp_behavior',
   DEFAULT_FILTER: 'bk_default_filter',
   CONFIRM_DELETE: 'bk_confirm_delete'
 };
@@ -70,7 +62,6 @@ const KEYS = {
 export const DisplaySettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [textScale, setTextScaleState] = useState<TextScale>(() => (localStorage.getItem(KEYS.TEXT_SCALE) as TextScale) || 'standard');
   const [density, setDensityState] = useState<DensityMode>(() => (localStorage.getItem(KEYS.DENSITY) as DensityMode) || 'standard');
-  const [contentWidth, setContentWidthState] = useState<ContentWidthMode>(() => (localStorage.getItem(KEYS.CONTENT_WIDTH) as ContentWidthMode) || 'standard');
   const [theme, setThemeState] = useState<ThemeMode>(() => (localStorage.getItem(KEYS.THEME) as ThemeMode) || 'system');
   const [reduceMotion, setReduceMotionState] = useState<boolean>(() => localStorage.getItem(KEYS.REDUCE_MOTION) === 'true');
   const [hapticFeedback, setHapticFeedbackState] = useState<HapticMode>(() => (localStorage.getItem(KEYS.HAPTIC_FEEDBACK) as HapticMode) || 'standard');
@@ -79,8 +70,7 @@ export const DisplaySettingsProvider: React.FC<{ children: React.ReactNode }> = 
   const [reminderTone, setReminderToneState] = useState<ReminderToneMode>(() => (localStorage.getItem(KEYS.REMINDER_TONE) as ReminderToneMode) || 'professional');
   const [reminderIncludeDueDate, setReminderIncludeDueDateState] = useState<boolean>(() => localStorage.getItem(KEYS.REMINDER_DUE_DATE) !== 'false');
   const [reminderIncludeShopName, setReminderIncludeShopNameState] = useState<boolean>(() => localStorage.getItem(KEYS.REMINDER_SHOP_NAME) !== 'false');
-  const [shopName, setShopNameState] = useState<string>(() => localStorage.getItem(KEYS.SHOP_NAME) || 'BahiKhata Store');
-  const [whatsappBehavior, setWhatsappBehaviorState] = useState<WhatsappBehaviorMode>(() => (localStorage.getItem(KEYS.WHATSAPP_BEHAVIOR) as WhatsappBehaviorMode) || 'confirm');
+  const [shopName, setShopNameState] = useState<string>(() => localStorage.getItem(KEYS.SHOP_NAME) || 'My Khata');
 
   const [defaultFilter, setDefaultFilterState] = useState<DefaultFilterMode>(() => (localStorage.getItem(KEYS.DEFAULT_FILTER) as DefaultFilterMode) || 'all');
   const [confirmDelete, setConfirmDeleteState] = useState<boolean>(() => localStorage.getItem(KEYS.CONFIRM_DELETE) !== 'false');
@@ -94,11 +84,6 @@ export const DisplaySettingsProvider: React.FC<{ children: React.ReactNode }> = 
     document.documentElement.setAttribute('data-density', density);
     localStorage.setItem(KEYS.DENSITY, density);
   }, [density]);
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-content-width', contentWidth);
-    localStorage.setItem(KEYS.CONTENT_WIDTH, contentWidth);
-  }, [contentWidth]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -116,7 +101,7 @@ export const DisplaySettingsProvider: React.FC<{ children: React.ReactNode }> = 
 
   useEffect(() => {
     localStorage.setItem(KEYS.REMINDER_LANG, reminderLang);
-    localStorage.setItem('bk_default_lang', reminderLang); // Sync legacy key
+    localStorage.setItem('bk_default_lang', reminderLang);
   }, [reminderLang]);
 
   useEffect(() => {
@@ -136,10 +121,6 @@ export const DisplaySettingsProvider: React.FC<{ children: React.ReactNode }> = 
   }, [shopName]);
 
   useEffect(() => {
-    localStorage.setItem(KEYS.WHATSAPP_BEHAVIOR, whatsappBehavior);
-  }, [whatsappBehavior]);
-
-  useEffect(() => {
     localStorage.setItem(KEYS.DEFAULT_FILTER, defaultFilter);
   }, [defaultFilter]);
 
@@ -149,64 +130,58 @@ export const DisplaySettingsProvider: React.FC<{ children: React.ReactNode }> = 
 
   const setTextScale = (val: TextScale) => setTextScaleState(val);
   const setDensity = (val: DensityMode) => setDensityState(val);
-  const setContentWidth = (val: ContentWidthMode) => setContentWidthState(val);
   const setTheme = (val: ThemeMode) => setThemeState(val);
   const setReduceMotion = (val: boolean) => setReduceMotionState(val);
   const setHapticFeedback = (val: HapticMode) => setHapticFeedbackState(val);
+
   const setReminderLang = (val: ReminderLangMode) => setReminderLangState(val);
   const setReminderTone = (val: ReminderToneMode) => setReminderToneState(val);
   const setReminderIncludeDueDate = (val: boolean) => setReminderIncludeDueDateState(val);
   const setReminderIncludeShopName = (val: boolean) => setReminderIncludeShopNameState(val);
   const setShopName = (val: string) => setShopNameState(val);
-  const setWhatsappBehavior = (val: WhatsappBehaviorMode) => setWhatsappBehaviorState(val);
+
   const setDefaultFilter = (val: DefaultFilterMode) => setDefaultFilterState(val);
   const setConfirmDelete = (val: boolean) => setConfirmDeleteState(val);
 
   const triggerHaptic = (pattern: 'light' | 'standard' | 'success' | 'warning' = 'light') => {
-    if (hapticFeedback === 'off') return;
-    if (typeof window !== 'undefined' && 'navigator' in window && 'vibrate' in navigator) {
+    if (hapticFeedback === 'off' || typeof navigator === 'undefined' || !navigator.vibrate) return;
+
+    try {
       if (pattern === 'light') {
         navigator.vibrate(10);
       } else if (pattern === 'standard') {
         navigator.vibrate(25);
       } else if (pattern === 'success') {
-        navigator.vibrate([15, 30, 15]);
+        navigator.vibrate([15, 40, 15]);
       } else if (pattern === 'warning') {
-        navigator.vibrate([40, 60, 40]);
+        navigator.vibrate([30, 60, 30]);
       }
+    } catch {
+      // Ignore vibration errors on unsupported runtimes
     }
   };
 
   const resetAppearance = () => {
-    setTextScaleState('standard');
-    setDensityState('standard');
-    setContentWidthState('standard');
-    setThemeState('system');
-    setReduceMotionState(false);
-    setHapticFeedbackState('standard');
-
-    document.documentElement.setAttribute('data-text-scale', 'standard');
-    document.documentElement.setAttribute('data-density', 'standard');
-    document.documentElement.setAttribute('data-content-width', 'standard');
-    document.documentElement.setAttribute('data-theme', 'system');
-    document.documentElement.setAttribute('data-reduce-motion', 'false');
+    setTextScale('standard');
+    setDensity('standard');
+    setTheme('system');
+    setReduceMotion(false);
+    setHapticFeedback('standard');
   };
 
   const resetReminderSettings = () => {
-    setReminderLangState('en');
-    setReminderToneState('professional');
-    setReminderIncludeDueDateState(true);
-    setReminderIncludeShopNameState(true);
-    setShopNameState('BahiKhata Store');
-    setWhatsappBehaviorState('confirm');
+    setReminderLang('en');
+    setReminderTone('professional');
+    setReminderIncludeDueDate(true);
+    setReminderIncludeShopName(true);
+    setShopName('My Khata');
   };
 
   return (
-    <DisplaySettingsContext.Provider 
+    <DisplaySettingsContext.Provider
       value={{
         textScale,
         density,
-        contentWidth,
         theme,
         reduceMotion,
         hapticFeedback,
@@ -215,12 +190,10 @@ export const DisplaySettingsProvider: React.FC<{ children: React.ReactNode }> = 
         reminderIncludeDueDate,
         reminderIncludeShopName,
         shopName,
-        whatsappBehavior,
         defaultFilter,
         confirmDelete,
         setTextScale,
         setDensity,
-        setContentWidth,
         setTheme,
         setReduceMotion,
         setHapticFeedback,
@@ -229,7 +202,6 @@ export const DisplaySettingsProvider: React.FC<{ children: React.ReactNode }> = 
         setReminderIncludeDueDate,
         setReminderIncludeShopName,
         setShopName,
-        setWhatsappBehavior,
         setDefaultFilter,
         setConfirmDelete,
         triggerHaptic,

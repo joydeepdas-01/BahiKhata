@@ -12,6 +12,8 @@ dist-ssr/
 *.local
 
 # Heavy Local JDK & Build Intermediates
+local.properties
+android/local.properties
 assets/jdk/
 .gradle/
 android/app/build/
