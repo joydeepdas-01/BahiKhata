@@ -3,6 +3,7 @@ import { CloseIcon, ArrowUpRightIcon, ArrowDownLeftIcon, AlertCircleIcon } from 
 import { Customer } from '../domain/customer';
 import { rupeesToPaise } from '../domain/amountFormatter';
 import { useDisplaySettings } from '../context/DisplaySettingsContext';
+import { CustomerSelector } from './CustomerSelector';
 
 interface QuickTransactionModalProps {
   isOpen: boolean;
@@ -10,7 +11,13 @@ interface QuickTransactionModalProps {
   customers: Customer[];
   initialCustomer?: Customer | null;
   initialType?: 'credit' | 'payment';
-  onRecordTransaction: (customerId: string, type: 'credit' | 'payment', amountPaise: number, note?: string, date?: string) => Promise<any>;
+  onRecordTransaction: (
+    customerId: string,
+    type: 'credit' | 'payment',
+    amountPaise: number,
+    note?: string,
+    date?: string
+  ) => Promise<any>;
 }
 
 export const QuickTransactionModal: React.FC<QuickTransactionModalProps> = ({
@@ -23,7 +30,9 @@ export const QuickTransactionModal: React.FC<QuickTransactionModalProps> = ({
 }) => {
   const { triggerHaptic } = useDisplaySettings();
 
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string>(() => initialCustomer?.id || (customers[0]?.id || ''));
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>(
+    () => initialCustomer?.id || customers[0]?.id || ''
+  );
   const [transType, setTransType] = useState<'credit' | 'payment'>(initialType);
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
@@ -85,35 +94,36 @@ export const QuickTransactionModal: React.FC<QuickTransactionModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-bk-text-primary/40 backdrop-blur-xs select-none p-0 sm:p-4 overflow-hidden animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-xs select-none p-0 sm:p-4 overflow-hidden animate-fade-in">
       <div className="absolute inset-0" onClick={onClose} />
 
-      <div className="relative w-full max-w-md bg-bk-surface border-t sm:border border-bk-border rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col justify-between overflow-hidden animate-slide-up">
+      <div className="relative w-full max-w-md bg-bk-surface border-t sm:border border-bk-border rounded-t-2xl sm:rounded-2xl shadow-xl flex flex-col overflow-hidden animate-slide-up max-h-[90vh]">
         {/* Mobile Drag Indicator */}
-        <div className="sm:hidden w-12 h-1 bg-bk-border rounded-full mx-auto mt-2" />
+        <div className="sm:hidden w-10 h-1 bg-bk-border rounded-full mx-auto mt-2" />
 
-        {/* Header */}
-        <div className="px-5 py-3.5 border-b border-bk-border flex items-center justify-between bg-bk-surface-soft/80 shrink-0">
+        {/* Compact Header */}
+        <div className="px-4 py-3 border-b border-bk-border flex items-center justify-between bg-bk-surface-soft/60 shrink-0">
           <div>
-            <h3 className="text-base sm:text-lg font-extrabold text-bk-text-primary tracking-tight">
+            <h3 className="text-sm sm:text-base font-extrabold text-bk-text-primary tracking-tight">
               Record Transaction
             </h3>
-            <p className="text-xs text-bk-text-tertiary">Quickly add credit or payment</p>
+            <p className="text-[11px] text-bk-text-tertiary">Quickly add credit or payment</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-bk-border/60 transition-colors text-bk-text-tertiary hover:text-bk-text-primary cursor-pointer"
+            className="w-7 h-7 rounded-full hover:bg-bk-border/60 transition-colors text-bk-text-tertiary hover:text-bk-text-primary flex items-center justify-center cursor-pointer"
+            aria-label="Close"
           >
-            <CloseIcon size={18} />
+            <CloseIcon size={16} />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4 select-text">
+        <form onSubmit={handleSubmit} className="p-4 space-y-3.5 select-text overflow-y-auto">
           {error && (
-            <div className="p-2.5 bg-bk-status-overdue/10 border border-bk-status-overdue/20 rounded-xl text-xs text-bk-status-overdue flex items-center gap-1.5">
-              <AlertCircleIcon size={15} />
+            <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-bk-status-overdue flex items-center gap-1.5">
+              <AlertCircleIcon size={14} className="shrink-0" />
               <span>{error}</span>
             </div>
           )}
@@ -132,7 +142,7 @@ export const QuickTransactionModal: React.FC<QuickTransactionModalProps> = ({
                   : 'text-bk-text-secondary hover:text-bk-text-primary'
               }`}
             >
-              <ArrowUpRightIcon size={15} />
+              <ArrowUpRightIcon size={14} />
               <span>Gave Credit (+ Udhaar)</span>
             </button>
 
@@ -148,32 +158,26 @@ export const QuickTransactionModal: React.FC<QuickTransactionModalProps> = ({
                   : 'text-bk-text-secondary hover:text-bk-text-primary'
               }`}
             >
-              <ArrowDownLeftIcon size={15} />
+              <ArrowDownLeftIcon size={14} />
               <span>Got Payment (- Jama)</span>
             </button>
           </div>
 
-          {/* Customer Selection */}
+          {/* Customer Selection via Searchable CustomerSelector */}
           <div className="space-y-1">
-            <label className="text-xs font-bold text-bk-text-secondary uppercase tracking-wider block">
+            <label className="text-[11px] font-bold text-bk-text-secondary uppercase tracking-wider block">
               Customer Account *
             </label>
-            <select
-              value={selectedCustomerId}
-              onChange={(e) => setSelectedCustomerId(e.target.value)}
-              className="w-full px-3.5 py-2.5 border border-bk-border rounded-xl bg-white text-sm font-semibold text-bk-text-primary focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary"
-            >
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.phone})
-                </option>
-              ))}
-            </select>
+            <CustomerSelector
+              customers={customers}
+              selectedCustomerId={selectedCustomerId}
+              onSelectCustomer={(id) => setSelectedCustomerId(id)}
+            />
           </div>
 
-          {/* Amount */}
+          {/* Amount Input */}
           <div className="space-y-1">
-            <label className="text-xs font-bold text-bk-text-secondary uppercase tracking-wider block">
+            <label className="text-[11px] font-bold text-bk-text-secondary uppercase tracking-wider block">
               Amount (₹) *
             </label>
             <div className="relative flex items-center">
@@ -181,57 +185,59 @@ export const QuickTransactionModal: React.FC<QuickTransactionModalProps> = ({
               <input
                 type="number"
                 step="any"
-                min="1"
+                min="0.01"
                 autoFocus
                 required
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="0.00"
-                className="w-full pl-8 pr-4 py-2.5 border border-bk-border rounded-xl bg-white text-base font-bold font-mono text-bk-text-primary focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary"
+                className="w-full pl-8 pr-4 py-2 border border-bk-border rounded-xl bg-white text-base font-bold font-mono text-bk-text-primary focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary"
               />
             </div>
           </div>
 
           {/* Date & Note in 2 cols */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div className="space-y-1">
               <label className="text-[11px] font-bold text-bk-text-secondary uppercase">Date</label>
               <input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-2 border border-bk-border rounded-xl bg-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary"
+                className="w-full px-3 py-2 border border-bk-border rounded-xl bg-white text-xs font-medium text-bk-text-primary focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-bk-text-secondary uppercase">Item / Note (Optional)</label>
+              <label className="text-[11px] font-bold text-bk-text-secondary uppercase">
+                Item / Note (Optional)
+              </label>
               <input
                 type="text"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="e.g. Bill #120, Cash"
-                className="w-full px-3 py-2 border border-bk-border rounded-xl bg-white text-xs focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary"
+                className="w-full px-3 py-2 border border-bk-border rounded-xl bg-white text-xs text-bk-text-primary focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary"
               />
             </div>
           </div>
 
           {/* Footer Actions */}
-          <div className="flex items-center justify-end gap-2.5 pt-2">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-bk-border mt-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-bk-border rounded-xl text-xs font-semibold text-bk-text-secondary hover:text-bk-text-primary bg-white cursor-pointer"
+              className="px-3.5 py-2 border border-bk-border rounded-xl text-xs font-semibold text-bk-text-secondary hover:text-bk-text-primary bg-white cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`px-6 py-2 rounded-xl text-xs font-bold text-white shadow-2xs cursor-pointer transition-all ${
+              className={`px-5 py-2 rounded-xl text-xs font-bold text-white shadow-2xs cursor-pointer transition-all active:scale-95 ${
                 transType === 'credit'
                   ? 'bg-bk-status-overdue hover:bg-red-700'
-                  : 'bg-bk-status-paid hover:bg-green-700'
+                  : 'bg-bk-status-paid hover:bg-emerald-700'
               }`}
             >
               {isSubmitting ? 'Saving...' : `Save ${transType === 'credit' ? 'Credit' : 'Payment'}`}

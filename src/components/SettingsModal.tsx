@@ -313,14 +313,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </label>
               </div>
 
-              {/* Message Live Preview Box */}
-              <div className="space-y-1">
+              {/* Message Live Preview Box with Authentic WhatsApp Bubble Aesthetic */}
+              <div className="space-y-1.5">
                 <div className="text-[11px] font-bold text-bk-text-secondary uppercase tracking-wider flex items-center gap-1.5">
-                  <WhatsAppIcon size={14} className="text-bk-status-paid" />
-                  <span>Sample WhatsApp Message Preview</span>
+                  <WhatsAppIcon size={14} className="text-[#25d366]" />
+                  <span>WhatsApp Message Preview</span>
                 </div>
-                <div className="p-3 bg-green-50 border border-green-200 rounded-xl text-xs text-green-950 whitespace-pre-wrap font-sans leading-relaxed">
-                  {getReminderPreviewText()}
+                <div className="bg-[#efeae2] p-3.5 rounded-2xl border border-[#d1d7db] shadow-inner space-y-2">
+                  <div className="text-center">
+                    <span className="text-[9px] font-bold text-gray-500 bg-white/70 px-2 py-0.5 rounded-full shadow-2xs uppercase">
+                      Today
+                    </span>
+                  </div>
+                  <div className="max-w-[90%] ml-auto bg-[#d9fdd3] text-[#111b21] p-3 rounded-2xl rounded-tr-xs shadow-2xs text-xs sm:text-sm leading-relaxed whitespace-pre-wrap select-text font-sans">
+                    {getReminderPreviewText()}
+                    <div className="text-[9px] text-[#667781] text-right mt-1 select-none flex items-center justify-end gap-1">
+                      <span>10:30 AM</span>
+                      <span className="text-[#53bdeb] font-bold">✓✓</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 

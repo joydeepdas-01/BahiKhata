@@ -55,9 +55,9 @@ export const TransactionsFeed: React.FC<TransactionsFeedProps> = ({
   }, [filteredTransactions]);
 
   return (
-    <AppContentContainer className="flex flex-col space-y-4 py-2">
-      {/* Header Summary */}
-      <div className="bg-bk-surface border border-bk-border rounded-2xl p-4 sm:p-5 shadow-xs select-none">
+    <AppContentContainer className="flex flex-col space-y-3.5 py-1.5 select-none">
+      {/* 1. Header Summary Card */}
+      <div className="bg-bk-surface border border-bk-border rounded-2xl p-4 sm:p-5 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h3 className="text-base sm:text-lg font-extrabold text-bk-text-primary tracking-tight">
@@ -68,12 +68,12 @@ export const TransactionsFeed: React.FC<TransactionsFeedProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-3 font-mono font-bold text-xs bg-bk-surface-soft border border-bk-border p-2.5 rounded-xl shrink-0">
+          <div className="flex items-center gap-3 font-mono font-bold text-xs bg-bk-surface-soft border border-bk-border p-2 sm:p-2.5 rounded-xl shrink-0">
             <div className="text-bk-status-overdue flex items-center gap-1">
               <ArrowUpRightIcon size={14} />
               <span>Gave: {formatIndianCurrency(totals.credit)}</span>
             </div>
-            <span className="text-bk-border">|</span>
+            <span className="text-bk-border font-light">|</span>
             <div className="text-bk-status-paid flex items-center gap-1">
               <ArrowDownLeftIcon size={14} />
               <span>Got: {formatIndianCurrency(totals.payment)}</span>
@@ -82,57 +82,68 @@ export const TransactionsFeed: React.FC<TransactionsFeedProps> = ({
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">
+      {/* 2. Filter and Search Bar */}
+      <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center justify-between">
         <div className="relative flex-1">
-          <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-bk-text-tertiary pointer-events-none">
-            <SearchIcon size={17} />
+          <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-bk-text-tertiary pointer-events-none">
+            <SearchIcon size={16} />
           </span>
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search transactions by customer name or item note..."
-            className="w-full pl-10 pr-4 py-2 border border-bk-border rounded-xl bg-white text-bk-text-primary text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary shadow-2xs"
+            placeholder="Search by customer name or item memo..."
+            className="w-full h-10 pl-9 pr-8 border border-bk-border rounded-xl bg-white text-bk-text-primary text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary shadow-2xs"
           />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-bk-text-tertiary hover:text-bk-text-primary text-xs cursor-pointer"
+            >
+              Clear
+            </button>
+          )}
         </div>
 
         {/* Type Filter Buttons */}
-        <div className="flex gap-1.5 shrink-0 select-none">
+        <div className="flex gap-1.5 shrink-0">
           <button
+            type="button"
             onClick={() => {
               triggerHaptic('light');
               setTypeFilter('all');
             }}
-            className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+            className={`h-8 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
               typeFilter === 'all'
-                ? 'bg-bk-brand-primary text-white border-bk-brand-primary'
+                ? 'bg-bk-brand-primary text-white border-bk-brand-primary shadow-2xs'
                 : 'bg-white text-bk-text-secondary border-bk-border hover:bg-bk-surface-soft'
             }`}
           >
-            All Entries
+            All ({transactions.length})
           </button>
           <button
+            type="button"
             onClick={() => {
               triggerHaptic('light');
               setTypeFilter('credit');
             }}
-            className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+            className={`h-8 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
               typeFilter === 'credit'
-                ? 'bg-bk-status-overdue text-white border-bk-status-overdue'
+                ? 'bg-bk-status-overdue text-white border-bk-status-overdue shadow-2xs'
                 : 'bg-white text-bk-text-secondary border-bk-border hover:bg-bk-surface-soft'
             }`}
           >
             Credit (+ Udhaar)
           </button>
           <button
+            type="button"
             onClick={() => {
               triggerHaptic('light');
               setTypeFilter('payment');
             }}
-            className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+            className={`h-8 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
               typeFilter === 'payment'
-                ? 'bg-bk-status-paid text-white border-bk-status-paid'
+                ? 'bg-bk-status-paid text-white border-bk-status-paid shadow-2xs'
                 : 'bg-white text-bk-text-secondary border-bk-border hover:bg-bk-surface-soft'
             }`}
           >
@@ -141,14 +152,16 @@ export const TransactionsFeed: React.FC<TransactionsFeedProps> = ({
         </div>
       </div>
 
-      {/* Transaction List */}
-      <div className="pt-1">
+      {/* 3. Transaction List */}
+      <div className="pt-0.5">
         {filteredTransactions.length === 0 ? (
-          <div className="p-8 border border-dashed border-bk-border rounded-2xl bg-white text-center space-y-2">
+          <div className="p-8 sm:p-12 border border-dashed border-bk-border rounded-2xl bg-white text-center space-y-2">
             <ClockIcon size={40} className="mx-auto text-bk-text-tertiary opacity-30" />
-            <h4 className="font-bold text-bk-text-primary text-sm">No transaction entries found</h4>
-            <p className="text-xs text-bk-text-secondary max-w-sm mx-auto">
-              Transactions recorded from customer ledger cards will appear here in chronological order.
+            <h4 className="font-bold text-bk-text-primary text-sm sm:text-base">No transaction entries found</h4>
+            <p className="text-xs text-bk-text-secondary max-w-sm mx-auto leading-relaxed">
+              {searchTerm || typeFilter !== 'all'
+                ? 'Try modifying your search text or switching the filter above.'
+                : 'Transactions recorded from customer ledger cards will appear here in chronological order.'}
             </p>
           </div>
         ) : (
@@ -166,35 +179,35 @@ export const TransactionsFeed: React.FC<TransactionsFeedProps> = ({
                       onSelectCustomer(cust);
                     }
                   }}
-                  className="p-3.5 bg-white border border-bk-border hover:border-bk-brand-primary/40 rounded-xl shadow-2xs flex items-center justify-between gap-3 transition-colors cursor-pointer"
+                  className="p-3 sm:p-3.5 bg-white border border-bk-border hover:border-bk-brand-primary/40 rounded-xl shadow-2xs flex items-center justify-between gap-3 transition-colors cursor-pointer group"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div
-                      className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
+                      className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 border ${
                         isCredit
-                          ? 'bg-red-50 text-bk-status-overdue'
-                          : 'bg-green-50 text-bk-status-paid'
+                          ? 'bg-red-50 text-bk-status-overdue border-red-100'
+                          : 'bg-emerald-50 text-bk-status-paid border-emerald-100'
                       }`}
                     >
-                      {isCredit ? <ArrowUpRightIcon size={18} /> : <ArrowDownLeftIcon size={18} />}
+                      {isCredit ? <ArrowUpRightIcon size={16} /> : <ArrowDownLeftIcon size={16} />}
                     </div>
 
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs sm:text-sm font-extrabold text-bk-text-primary">
+                        <span className="text-xs sm:text-sm font-extrabold text-bk-text-primary truncate group-hover:text-bk-brand-primary transition-colors">
                           {cust ? cust.name : 'Unknown Customer'}
                         </span>
-                        <span className="text-[10px] text-bk-text-tertiary font-mono">
+                        <span className="text-[10px] text-bk-text-tertiary font-mono shrink-0">
                           {formatDisplayDate(t.date)}
                         </span>
                       </div>
-                      <p className="text-xs text-bk-text-secondary mt-0.5">
+                      <p className="text-xs text-bk-text-secondary truncate mt-0.5">
                         {t.note || (isCredit ? 'Credit given' : 'Payment received')}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex flex-col items-end shrink-0">
+                  <div className="flex flex-col items-end shrink-0 pl-1">
                     <span
                       className={`font-mono text-sm sm:text-base font-extrabold ${
                         isCredit ? 'text-bk-status-overdue' : 'text-bk-status-paid'
@@ -202,7 +215,13 @@ export const TransactionsFeed: React.FC<TransactionsFeedProps> = ({
                     >
                       {isCredit ? '+' : '-'} {formatIndianCurrency(t.amount)}
                     </span>
-                    <span className="text-[10px] text-bk-text-tertiary uppercase">
+                    <span
+                      className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded mt-0.5 ${
+                        isCredit
+                          ? 'bg-red-50 text-bk-status-overdue'
+                          : 'bg-emerald-50 text-bk-status-paid'
+                      }`}
+                    >
                       {isCredit ? 'Credit' : 'Payment'}
                     </span>
                   </div>
@@ -215,4 +234,3 @@ export const TransactionsFeed: React.FC<TransactionsFeedProps> = ({
     </AppContentContainer>
   );
 };
-

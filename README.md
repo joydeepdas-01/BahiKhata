@@ -1,317 +1,391 @@
 <p align="center">
-  <img src="public/favicon.svg" width="96" height="96" alt="BahiKhata Logo" />
+  <img src="public/favicon.svg" width="100" height="100" alt="BahiKhata Logo" />
 </p>
 
 <h1 align="center">बहीखाता — BahiKhata v2.0</h1>
 
 <p align="center">
-  <strong>The Modern, Private, Offline-First Digital Ledger & Smart Payment Reminder System for Android & Web.</strong>
+  <strong>Modern, Minimal, Private, and 100% Offline-First Digital Ledger & Smart Payment Reminder System for Indian Merchants.</strong>
 </p>
 
 <p align="center">
-  <a href="releases/v2.0.0/BahiKhata-v2.0.0.apk"><img src="https://img.shields.io/badge/Release-v2.0.0%20(APK)-b32424.svg?style=for-the-badge&logo=android&logoColor=white" alt="APK Release" /></a>
-  <a href="#-architecture--data-flow"><img src="https://img.shields.io/badge/Architecture-100%25%20Offline%20First-2d3748.svg?style=for-the-badge&logo=apache&logoColor=white" alt="Offline First" /></a>
+  <a href="releases/v2.0.0/BahiKhata-v2.0.0.apk"><img src="https://img.shields.io/badge/Release-v2.0.0%20(APK)-b3262d.svg?style=for-the-badge&logo=android&logoColor=white" alt="APK Release" /></a>
+  <a href="#️-system-architecture--clean-component-hierarchy"><img src="https://img.shields.io/badge/Architecture-100%25%20Offline%20First-2d3748.svg?style=for-the-badge&logo=apache&logoColor=white" alt="Offline First" /></a>
   <a href="#-automated-testing--quality-assurance"><img src="https://img.shields.io/badge/Tests-37%2F37%20Passing-16a34a.svg?style=for-the-badge&logo=vitest&logoColor=white" alt="Tests Passed" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="License" /></a>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Platform-Android%20%7C%20Web%20PWA-orange" alt="Platform" />
-  <img src="https://img.shields.io/badge/Framework-React%2019%20%2B%20TailwindCSS%20v4-blue" alt="React 19" />
-  <img src="https://img.shields.io/badge/Mobile-Capacitor%20v8-blueviolet" alt="Capacitor v8" />
-  <img src="https://img.shields.io/badge/Database-IndexedDB%20v2-success" alt="IndexedDB" />
-  <img src="https://img.shields.io/badge/Currency-Paise%20Integer%20Math-green" alt="Integer Precision" />
-  <img src="https://img.shields.io/badge/Privacy-Zero%20Cloud%20Tracking-brightgreen" alt="Zero Tracking" />
+  <img src="https://img.shields.io/badge/Android-7.0%20to%2015.0%20(API%2024--35)-green?style=flat-square&logo=android" alt="Android Support" />
+  <img src="https://img.shields.io/badge/React-19.2-61dafb?style=flat-square&logo=react" alt="React 19" />
+  <img src="https://img.shields.io/badge/TailwindCSS-v4.0-38bdf8?style=flat-square&logo=tailwindcss" alt="TailwindCSS v4" />
+  <img src="https://img.shields.io/badge/Capacitor-v8.1-1199ee?style=flat-square&logo=capacitor" alt="Capacitor v8" />
+  <img src="https://img.shields.io/badge/Database-IndexedDB%20v2-orange?style=flat-square" alt="IndexedDB v2" />
+  <img src="https://img.shields.io/badge/Currency-Paise%20Integer%20Math-emerald?style=flat-square" alt="Integer Precision" />
+  <img src="https://img.shields.io/badge/Privacy-Zero%20Cloud%20Telemetry-red?style=flat-square" alt="Zero Tracking" />
+  <img src="https://img.shields.io/badge/Build-Vite%208%20%2B%20Gradle%208-purple?style=flat-square" alt="Vite and Gradle" />
 </p>
 
 ---
 
 ## 📖 Table of Contents
 
-- [🌟 Product Overview](#-product-overview)
-- [📥 Quick Download & Installation](#-quick-download--installation)
-- [✨ Key Features & Capabilities](#-key-features--capabilities)
-- [🏗️ System Architecture & Data Flow](#️-system-architecture--data-flow)
-- [📱 Native Android Contact Integration](#-native-android-contact-integration)
+- [🌟 Product Vision & Design Philosophy](#-product-vision--design-philosophy)
+- [📥 Download & Installation Guide](#-download--installation-guide)
+- [🎨 Unified Design System & Visual Tokens](#-unified-design-system--visual-tokens)
+- [📱 Screen-by-Screen Architecture](#-screen-by-screen-architecture)
+- [🏗️ System Architecture & Clean Component Hierarchy](#️-system-architecture--clean-component-hierarchy)
+- [🔄 Double-Entry Ledger State Machine](#-double-entry-ledger-state-machine)
+- [📱 Native Android Contact Picker Integration](#-native-android-contact-picker-integration)
 - [🔢 Mathematical Financial Precision (Zero Floating-Point)](#-mathematical-financial-precision-zero-floating-point)
 - [💬 Multilingual WhatsApp Reminder Engine](#-multilingual-whatsapp-reminder-engine)
-- [🎨 Design System & Reference Standards](#-design-system--reference-standards)
+- [🗄️ Database Schema & Storage Architecture](#️-database-schema--storage-architecture)
 - [🛠️ Technology Stack](#️-technology-stack)
-- [💻 Local Development & Android Build Guide](#-local-development--android-build-guide)
+- [💻 Developer Quickstart & Build Instructions](#-developer-quickstart--build-instructions)
 - [🧪 Automated Testing & Quality Assurance](#-automated-testing--quality-assurance)
-- [🔒 Data Privacy & Security Commitments](#-data-privacy--security-commitments)
-- [📄 License](#-license)
+- [🔒 Privacy & Security Commitments](#-privacy--security-commitments)
+- [📄 License & Credits](#-license--credits)
 
 ---
 
-## 🌟 Product Overview
+## 🌟 Product Vision & Design Philosophy
 
-**BahiKhata (बहीखाता)** transforms informal, paper-based merchant accounting into a fast, elegant, and secure digital ledger. Built specifically for Indian shopkeepers, kirana stores, tuition teachers, tailors, freelancers, and small wholesalers, BahiKhata eliminates tedious manual reminder composition and ledger math.
+**BahiKhata (बहीखाता)** replaces the traditional red cloth-bound Indian merchant account book (*Lal Bahi*) with a modern, distraction-free digital ledger designed with surgical UI discipline.
 
-> **Core Product Guarantee:**  
-> *"Who owes me money, how much do they owe, and how do I remind them instantly?"*  
-> **Add customer $\rightarrow$ Record transactions $\rightarrow$ View balances $\rightarrow$ Send WhatsApp reminder in 2 taps.**
+### The Problem It Solves
+Small shopkeepers, kirana owners, tailors, tutors, and freelance merchants lose thousands of rupees every month to forgotten debts, awkward reminder phone calls, and calculation errors. Cloud apps demand phone numbers, mandatory accounts, cloud sync subscriptions, and invasive contact access.
 
-- **🚫 Zero Mandatory Accounts:** No signup, no phone OTP, no passwords.
-- **🔒 100% Device-Local Autonomy:** Operates entirely inside device IndexedDB (`BahiKhataDB`). Zero remote databases, zero analytics, zero surveillance.
-- **📱 Android-Native Performance:** Optimized for one-handed smartphone thumb navigation, full Android back-button stacks, and native contact picking.
-- **💬 Direct WhatsApp Deep-Linking:** Generates localized reminder messages sent via user-controlled WhatsApp links without costly enterprise APIs.
+### The BahiKhata Solution
+```
+Add Customer (or Pick Contact) ➔ Record Credit/Payment ➔ Check Balance ➔ Send WhatsApp Reminder in 2 Taps
+```
+
+- **100% Offline & Private:** Runs entirely on-device inside IndexedDB (`bahikhata_db`). Zero servers, zero telemetry, zero accounts.
+- **Native Android Ergonomics:** 5-destination thumb navigation, safe-area inset handling, responsive layouts from 320px to 412px+, and hardware back-button handling.
+- **Integer-Paise Precision:** Zero floating-point rounding bugs ($₹100.50 \rightarrow 10050 \text{ paise}$).
+- **Non-Invasive Contact Picker:** Only the single contact selected by the user is retrieved; address books are never uploaded or indexed.
 
 ---
 
-## 📥 Quick Download & Installation
+## 📥 Download & Installation Guide
 
-| Build Asset | Target Platform | Checksum (SHA-256) | Download Link |
+| Build Asset | Target Version | SHA-256 Checksum | Download Link |
 | :--- | :--- | :--- | :--- |
-| **BahiKhata v2.0.0 APK** | Android 7.0+ (ARM64/x86_64) | `8210090b6bca557701360248cb0d6b16213595a8d31764ad2b6e940d307cb645` | [📦 Download BahiKhata-v2.0.0.apk](releases/v2.0.0/BahiKhata-v2.0.0.apk) |
-| **BahiKhata v1.0.0 APK** | Android 7.0+ (Legacy) | `57fdccd4e391300977da9067b575fae8fae852462e08ba5bba626b46c692ff5c` | [📦 Download BahiKhata-v1.0.0.apk](releases/v1.0.0/BahiKhata-v1.0.0.apk) |
+| **BahiKhata v2.0.0 APK** | Android 7.0+ (Nougat through 15) | `2b6aa0ce503495c7d438f6f501916ad779a20937425ed611384f42fa1fbdec8b` | [📦 Download BahiKhata-v2.0.0.apk](releases/v2.0.0/BahiKhata-v2.0.0.apk) |
+| **Checksum Manifest** | Any | Text File | [📄 SHA256SUMS.txt](releases/v2.0.0/SHA256SUMS.txt) |
 
-### Installing via Android Device
-1. Download **[BahiKhata-v2.0.0.apk](releases/v2.0.0/BahiKhata-v2.0.0.apk)** directly onto your phone.
-2. Tap the downloaded file and select **Install** (*Allow installation from unknown sources* if prompted).
-3. Open **BahiKhata** and manage your khata immediately!
+### Direct Phone Installation
+1. Download **[BahiKhata-v2.0.0.apk](releases/v2.0.0/BahiKhata-v2.0.0.apk)** directly on your Android phone.
+2. Tap the file in your notification panel or Downloads folder.
+3. Select **Install** (if prompted, enable *Install unknown apps* for your browser/file manager).
+4. Launch **BahiKhata** and manage your store ledger immediately.
 
-### Installing via ADB (Command-Line)
+### Command-Line Installation via ADB
 ```bash
+# Check connected Android device
+adb devices
+
+# Install/Update APK
 adb install -r releases/v2.0.0/BahiKhata-v2.0.0.apk
+
+# Launch App
 adb shell am start -n com.bahikhata.app/.MainActivity
 ```
 
 ---
 
-## ✨ Key Features & Capabilities
+## 🎨 Unified Design System & Visual Tokens
+
+The visual system adheres to strict principles derived from **Apple Human Interface Guidelines**, **Wise**, **Linear**, and **Material Design 3**:
 
 ```mermaid
-mindmap
-  root((BahiKhata v2.0))
-    Customer Management
-      Native Android Contact Picker
-      Smart +91 Auto-normalization
-      Real-Time Duplicate Detector
-      Multi-phone Selection Chips
-    Double-Entry Ledger
-      Credit Given (+ Udhaar)
-      Payment Got (- Jama)
-      Integer-Paise Precision
-      Audit Trail Timeline
-    Smart WhatsApp Reminders
-      English / Hindi / Bengali
-      Gentle / Due Today / Overdue / Final
-      Live WhatsApp Chat Mockup
-      wa.me Direct Deep-Links
-    UX & Navigation
-      Mobile-Native Bottom Bar
-      Wise-Inspired Financial Hero
-      Linear-Style Snappy Search
-      Apple-Grade Typography
-    Data Security
-      100% Offline IndexedDB v2
-      One-Click CSV / JSON Backup
-      Bulk Spreadsheet Paste
-      Zero Cloud Tracking
+graph LR
+    subgraph Design Foundations
+        A[Apple Polish] --> Whitespace[Subtle Whitespace & Typography]
+        B[Wise Precision] --> Financials[Bold Tabular Monospace Financials]
+        C[Linear Discipline] --> SearchSort[Instant Search & Filter Chips]
+        D[Material 3] --> Navigation[Bottom Navigation & Safe Areas]
+    end
 ```
 
-### 1. Native Android Contact Picker
-- Pick existing customer contacts directly from your Android address book.
-- Automatically retrieves display names and phone numbers.
-- Handles contacts with multiple phone numbers (Mobile, Home, Work) with simple tap-chips.
-- Respects device privacy by requesting access strictly to the picked contact.
+### Color Palette Tokens
+| Token | Hex Value | Semantic Usage |
+| :--- | :--- | :--- |
+| `--color-bk-brand-primary` | `#B3262D` | Traditional Khata Burgundy/Crimson; primary buttons and active indicators |
+| `--color-bk-brand-primary-hover`| `#981E24` | Interactive hover state |
+| `--color-bk-canvas` | `#F8F7F4` | Warm parchment background canvas; easy on merchant eyes |
+| `--color-bk-surface` | `#FFFFFF` | Crisp white card surface |
+| `--color-bk-surface-soft` | `#F3F0EA` | Soft muted parchment for inner chips, avatars, and tags |
+| `--color-bk-border` | `#E8E6E1` | Subtle hairline dividers and card boundaries |
+| `--color-bk-text-primary` | `#252525` | High-contrast charcoal text |
+| `--color-bk-text-secondary` | `#737373` | Balanced secondary helper text |
+| `--color-bk-text-tertiary` | `#949494` | Timestamps and subtle metadata |
+| `--color-bk-status-overdue` | `#B3262D` | Pending debts and credit given (+ Udhaar) |
+| `--color-bk-status-paid` | `#166534` | Fully settled accounts and payments received (- Jama) |
+| `--color-bk-status-pending` | `#D97706` | Approaching due dates and warnings |
 
-### 2. Full Transaction Ledger & Audit Timeline
-- Record **Gave Credit (+ Udhaar)** and **Got Payment (- Jama)** in 2 taps.
-- Customer detail view features full transaction history with timestamps, custom item notes, and running balance calculations.
-- Delete or correct mistaken entries with automatic balance recalculation.
-
-### 3. Real-Time Customer Duplicate Detection
-- Prevent duplicate accounts: when typing a mobile number or importing a contact, the app alerts if a customer already exists and links directly to their existing ledger.
-
-### 4. Smart WhatsApp Payment Reminders
-- Choose from 3 regional languages (**English**, **हिंदी**, **বাংলা**).
-- 4 contextual reminder tones (**Gentle Pre-due**, **Due Today**, **Overdue**, **Final Notice**).
-- Automatic placeholder substitution: `{{name}}`, `{{amount}}`, `{{due_date}}`, `{{reason}}`, and custom business signature.
-- Live chat bubble mockup and 1-tap deep link generation to WhatsApp.
-
-### 5. Follow-Up Reminders Queue
-- Dedicated **Reminders** view ranking customers by payment urgency (Overdue first $\rightarrow$ Due Today $\rightarrow$ Due Soon) with instant 1-tap WhatsApp reminder buttons.
-
-### 6. Activity Feed & Daily Cashflow
-- Chronological transaction feed tracking all credits and payments across all customers with daily financial totals.
-
-### 7. Spreadsheet Bulk Paste & Data Portability
-- Paste rows from Excel, Google Sheets, or TSV directly into the app for multi-customer creation.
-- 1-click **Export to CSV** and **Full JSON Backup**.
-- 2-step protected local data erase mechanism.
+### Spacing & Typography Scale
+- **Grid Unit:** Strict 4px scale, favoring 8px increments for layouts (`px-3.5`, `px-4`, `gap-2.5`, `space-y-3.5`).
+- **Touch Targets:** Standardized $\ge 44\text{px}$ touch target heights (`h-10` / `h-11` for buttons and inputs; `h-8` for compact card action chips).
+- **Typography:** `Inter` variable font with strict optical weights (`font-extrabold` for names/headings, `font-mono font-bold` for currencies, `font-medium` for subtitles).
 
 ---
 
-## 🏗️ System Architecture & Data Flow
+## 📱 Screen-by-Screen Architecture
+
+### 1. Customer Dashboard (`CustomerList.tsx`)
+- **Header:** Balanced identity, shop name, bulk spreadsheet paste button, settings trigger, and compact Add Customer action.
+- **Wise-Inspired Hero Card:** Highlights total pending dues as the primary figure, with pending account count, overdue account count, and compact today's cashflow badge.
+- **Search & Sort Toolbar:** Real-time search across customer names, phones, and notes; compact sorting (Recent, Balance, Name, Due Date).
+- **Filter Chips:** Horizontally scrollable status chips: All, Pending, Due Today, Overdue, Settled.
+- **Unified Customer Cards:** Reusable `CustomerCard` component featuring initials avatar, formatted phone, due status, relative due indicator, note preview, and responsive action bar (Edit, Delete, `+ Credit`, `- Payment`, and `Remind`).
+
+### 2. Transaction Activity Feed (`TransactionsFeed.tsx`)
+- **Cashflow Summary Banner:** Compact dual summary displaying Gave (+ Credit) vs Got (- Payment) totals.
+- **Feed Search & Filters:** Filter by All Entries, Credit Only, or Payment Only.
+- **Chronological List:** Color-coded transaction cards showing customer name, transaction date, custom note, and amount with sign indicator.
+
+### 3. Record Transaction Modal (`QuickTransactionModal.tsx`)
+- **Balanced Bottom Sheet:** Smooth slide-up sheet respecting Android keyboard and screen bounds.
+- **Type Toggle:** Instant toggle between Gave Credit (+ Udhaar) and Got Payment (- Jama).
+- **Searchable Customer Selector (`CustomerSelector.tsx`):** Custom high-fidelity dropdown replacing raw system selects, with real-time search, customer avatar, phone, and current balance preview.
+- **Amount & Presets:** Large ₹ input with integer-paise conversion, date selector, and optional item note.
+
+### 4. Payment Follow-Up Queue (`RemindersQueue.tsx`)
+- **Prioritized Urgency Sorting:** Automatically ranks overdue accounts first, followed by due today, sorted by debt magnitude.
+- **Direct 1-Tap Reminders:** Opens the pre-filled WhatsApp message composer for the selected customer in one tap.
+
+### 5. Settings & Preferences (`SettingsModal.tsx`)
+- **Tabbed Interface:** Business & Reminders, Appearance, Data & Backup, About & Privacy.
+- **Authentic WhatsApp Preview:** Live chat bubble mockup displaying real WhatsApp bubble colors (`#d9fdd3`), timestamps, and double-blue ticks.
+- **Data Protection:** CSV export, complete JSON backup, CSV import, and protected 2-step deletion requiring typing "DELETE".
+
+---
+
+## 🏗️ System Architecture & Clean Component Hierarchy
 
 ```mermaid
 flowchart TD
-    User([Shopkeeper / Merchant]) -->|Touches UI| MobileShell[React 19 + TailwindCSS v4 Mobile Shell]
-    
-    subgraph Navigation & Presentation Layer
-        MobileShell --> BottomNav[Material 3 Bottom Navigation]
-        BottomNav --> Tab1[Khata Customer List]
-        BottomNav --> Tab2[Activity Transactions Feed]
-        BottomNav --> Tab3[Reminders Follow-Up Queue]
-        BottomNav --> Tab4[Consolidated Settings]
-        MobileShell --> QuickFAB[Quick Transaction Entry FAB]
+    User([Merchant / Shopkeeper]) -->|Interacts| UI[App Shell React 19]
+
+    subgraph Header & Navigation Layer
+        UI --> AppHeader[AppHeader Component]
+        UI --> BottomNav[BottomNavigation Component]
+        BottomNav --> Tab1[Customers View]
+        BottomNav --> Tab2[Transactions View]
+        BottomNav --> Tab3[Quick Action FAB]
+        BottomNav --> Tab4[Reminders Queue]
+        BottomNav --> Tab5[Settings Drawer]
+    end
+
+    subgraph Presentation & Reusable Components
+        Tab1 --> CustomerList[CustomerList Component]
+        CustomerList --> CustomerCard[CustomerCard Reusable Component]
+        Tab2 --> TransactionsFeed[TransactionsFeed Component]
+        Tab3 --> QuickModal[QuickTransactionModal Component]
+        QuickModal --> CustomerSelector[CustomerSelector Custom Dropdown]
+        Tab4 --> RemindersQueue[RemindersQueue Component]
+        Tab5 --> SettingsModal[SettingsModal Component]
+        UI --> CustomerDetailModal[CustomerDetailModal Full Sheet]
+        UI --> WhatsAppPreview[WhatsAppPreview Chat Bubble Modal]
+        UI --> CustomerForm[CustomerForm Component]
+    end
+
+    subgraph Domain & Storage Layer
+        CustomerList & TransactionsFeed & QuickModal & RemindersQueue --> useCustomers[useCustomers State Hook]
+        useCustomers --> CustomerRepo[CustomerRepository Class]
+        CustomerRepo --> DB_Cust[(IndexedDB: customers)]
+        CustomerRepo --> DB_Trans[(IndexedDB: transactions)]
+        useCustomers --> MathEngine[Paise Integer Financial Calculator]
+        useCustomers --> PhoneEngine[PhoneNormalizer +91 Validator]
+        useCustomers --> TemplateEngine[Multilingual Template Parser]
     end
 
     subgraph Native Android Boundary
-        MobileShell -->|Capacitor v8 Bridge| CapCore[Capacitor Core Native Runtime]
-        CapCore -->|Intent.ACTION_PICK| ContactPlugin[Native ContactPickerPlugin.java]
-        CapCore -->|Back Button Handler| AndroidBack[Hardware Back Button Listener]
-        ContactPlugin -->|System Contact Picker| AndroidOS[(Android Contacts Provider)]
-    end
-
-    subgraph Local Storage & Domain Engine
-        Tab1 & Tab2 & Tab3 & QuickFAB --> CustomerContext[Customer Ledger State Hook]
-        CustomerContext --> Repos[CustomerRepository IndexedDB v2]
-        Repos --> DB_Customers[(IndexedDB: customers)]
-        Repos --> DB_Transactions[(IndexedDB: transactions)]
-        CustomerContext --> Calc[Paise Integer Financial Calculator]
-        CustomerContext --> DupDetect[Real-Time Duplicate Detector]
-        CustomerContext --> WAEval[WhatsApp Template Parser]
-    end
-
-    subgraph External Integration
-        WAEval -->|https://wa.me/91XXXXXXXXXX?text=...| WhatsAppApp([Official WhatsApp Application])
+        CustomerForm -->|Capacitor Bridge| NativePlugin[ContactPickerPlugin.java]
+        NativePlugin -->|Intent.ACTION_PICK| AndroidContacts[(Device Contacts Provider)]
+        WhatsAppPreview -->|Deep Link| WhatsAppApp([Official WhatsApp App])
     end
 ```
 
 ---
 
-## 📱 Native Android Contact Integration
+## 🔄 Double-Entry Ledger State Machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> ZeroBalance: Add New Customer (₹0)
+    [*] --> DueBalance: Add with Opening Credit
+    
+    ZeroBalance --> DueBalance: Record Credit (+ Udhaar)
+    DueBalance --> DueBalance: Record More Credit
+    DueBalance --> DueToday: Due Date Reached
+    DueToday --> Overdue: Due Date Passed
+    
+    DueBalance --> ZeroBalance: Exact Payment (- Jama)
+    DueToday --> ZeroBalance: Exact Payment (- Jama)
+    Overdue --> ZeroBalance: Exact Payment (- Jama)
+    
+    DueBalance --> AdvanceBalance: Excess Payment (- Jama)
+    ZeroBalance --> AdvanceBalance: Payment Received
+    AdvanceBalance --> ZeroBalance: Credit Consumed
+    AdvanceBalance --> DueBalance: Credit Exceeded
+    
+    Overdue --> Overdue: Send WhatsApp Reminder
+```
+
+---
+
+## 📱 Native Android Contact Picker Integration
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor Merchant as Shopkeeper
-    participant UI as BahiKhata Mobile App
-    participant Bridge as Capacitor Bridge
-    participant Native as ContactPickerPlugin.java
-    participant Android as Android Contacts Provider
+    participant UI as CustomerForm
+    participant Service as contactPickerService.ts
+    participant Plugin as ContactPickerPlugin.java
+    participant OS as Android System Picker
 
-    Merchant->>UI: Tap "Import from Contacts"
-    UI->>Bridge: pickContactFromDevice()
-    Bridge->>Native: NativeContactPicker.pickContact()
-    Native->>Android: startActivityForResult(Intent.ACTION_PICK)
-    Note over Android: Android System Contact Picker opens
-    Merchant->>Android: Selects "Rahul Sharma"
-    Android-->>Native: URI (content://contacts/...)
-    Native->>Android: Query Display Name & Phone Numbers
-    Android-->>Native: [{name: "Rahul Sharma", number: "9876543210", type: "Mobile"}]
-    Native-->>Bridge: Resolve JSObject { name, phoneNumber, allPhones }
-    Bridge-->>UI: Populate CustomerForm automatically
-    UI-->>Merchant: Display details & phone chips for review
+    Merchant->>UI: Tap "Select Contact"
+    UI->>Service: pickContactFromDevice()
+    Service->>Plugin: NativeContactPicker.pickContact()
+    Plugin->>OS: startActivityForResult(Intent.ACTION_PICK)
+    Note over OS: Native Android Contact Picker Opens
+    Merchant->>OS: Selects Contact
+    OS-->>Plugin: Content URI (content://contacts/...)
+    Plugin->>OS: Query Display Name & All Phone Numbers
+    OS-->>Plugin: Cursor Result [{name, number, type}]
+    Plugin-->>Service: JSObject { name, phoneNumber, allPhones }
+    Service-->>UI: Normalized Contact Data
+    UI-->>Merchant: Pre-populates Name, +91 Phone & Multi-phone Chips
 ```
 
 ---
 
 ## 🔢 Mathematical Financial Precision (Zero Floating-Point)
 
-In standard JavaScript, floating-point arithmetic introduces rounding anomalies:
+In standard JavaScript, binary IEEE-754 floating-point arithmetic causes rounding errors:
 ```javascript
-// Standard JavaScript floating-point bug:
+// Floating-point inaccuracy in standard JS:
 0.1 + 0.2 = 0.30000000000000004
 ```
 
-In BahiKhata, every monetary value is converted to integer **Paise** at entry:
+To eliminate any discrepancy in merchant balances, BahiKhata stores every monetary amount as an **integer number of Paise**:
 
 $$\text{Paise} = \text{round}(\text{Rupees} \times 100)$$
 
-$$\text{Net Balance} = \sum_{i=1}^{n} \text{Credit}_i - \sum_{j=1}^{m} \text{Payment}_j$$
+$$\text{Net Balance} = \sum_{k=1}^{n} \text{Credit}_k - \sum_{j=1}^{m} \text{Payment}_j$$
 
-| State | Condition | UI Indication | Financial Meaning |
+$$\text{Display Rupees} = \frac{|\text{Net Balance}|}{100}$$
+
+| Condition | Mathematical Meaning | UI Badge | Display Color |
 | :--- | :--- | :--- | :--- |
-| **Pending Due** | $\text{Balance} > 0$ | 🔴 Crimson (`text-bk-status-overdue`) | Customer owes money to shopkeeper |
-| **Settled** | $\text{Balance} = 0$ | 🟢 Forest Green (`text-bk-status-paid`) | Account fully settled |
-| **Advance** | $\text{Balance} < 0$ | 🔵 Blue (`text-blue-600`) | Customer paid advance / shopkeeper owes customer |
+| $\text{Balance} > 0$ | Customer owes store | `Due` | 🔴 Crimson (`text-bk-status-overdue`) |
+| $\text{Balance} = 0$ | Fully settled account | `Settled` | 🟢 Forest Green (`text-bk-status-paid`) |
+| $\text{Balance} < 0$ | Customer paid advance | `Advance` | 🔵 Blue (`text-blue-600`) |
 
 ---
 
 ## 💬 Multilingual WhatsApp Reminder Engine
 
-BahiKhata comes pre-configured with culturally appropriate reminder templates tailored to Indian small-business communication:
-
 ```mermaid
-flowchart LR
-    A[Select Customer] --> B[Classify Due Date]
-    B --> C{Due Status}
-    C -->|Future Date| T1[Gentle Tone]
-    C -->|Today| T2[Due Today Tone]
-    C -->|Past Due| T3[Overdue Tone]
-    C -->|Extended Overdue| T4[Final Notice Tone]
-    
-    T1 & T2 & T3 & T4 --> D[Language Selection]
-    D --> E[English]
-    D --> F[हिंदी Hindi]
-    D --> G[বাংলা Bengali]
-    
-    E & F & G --> H[Inject Placeholders: Name, Amount, Due Date, Store Signature]
-    H --> I[Live WhatsApp Bubble Preview]
-    I --> J[wa.me Deep Link]
+flowchart TD
+    Cust[Customer Record] --> Classify[Date Classifier]
+    Classify -->|Due in Future| Tone1[Gentle Pre-due]
+    Classify -->|Due Today| Tone2[Due Today Standard]
+    Classify -->|1-7 Days Late| Tone3[Urgent Overdue]
+    Classify -->|>7 Days Late| Tone4[Final Notice]
+
+    Tone1 & Tone2 & Tone3 & Tone4 --> LangSelect{Select Language}
+    LangSelect --> L1[English]
+    LangSelect --> L2[हिंदी Hindi]
+    LangSelect --> L3[বাংলা Bengali]
+
+    L1 & L2 & L3 --> Interpolate[Placeholder Substitution: Name, Amount, Due Date, Shop Signature]
+    Interpolate --> Mockup[WhatsApp Chat Bubble Preview]
+    Mockup --> Send[wa.me Deep Link via window.open]
 ```
 
-### Supported Languages
-1. **English:**  
-   *"Hello {{name}}, this is a gentle reminder that your pending balance of {{amount}} is due on {{due_date}}. Thank you! — {{shop_name}}"*
-2. **हिंदी (Hindi):**  
-   *"नमस्ते {{name}}, यह एक विनम्र अनुस्मारक है कि आपकी {{amount}} की लंबित राशि {{due_date}} को देय है। धन्यवाद! — {{shop_name}}"*
-3. **বাংলা (Bengali):**  
-   *"নমস্কার {{name}}, এটি একটি মৃদু অনুস্মারক যে আপনার {{amount}} টাকার বকেয়া বিলটি {{due_date}} তারিখে পরিশোধ করার কথা। ধন্যবাদ! — {{shop_name}}"*
+### Pre-configured Message Samples
+- **English:**
+  > *"Hello Ramesh Patel, this is a gentle reminder that your pending balance of ₹1,500.00 is due on 15 Nov. Thank you! — Sharma General Store"*
+- **हिंदी (Hindi):**
+  > *"नमस्ते Ramesh Patel, यह एक विनम्र अनुस्मारक है कि आपकी ₹1,500.00 की लंबित राशि 15 Nov को देय है। धन्यवाद! — Sharma General Store"*
+- **বাংলা (Bengali):**
+  > *"নমস্কার Ramesh Patel, এটি একটি মৃদু অনুস্মারক যে আপনার ₹1,500.00 টাকার বকেয়া বিলটি 15 Nov তারিখে পরিশোধ করার কথা। ধন্যবাদ! — Sharma General Store"*
 
 ---
 
-## 🎨 Design System & Reference Standards
+## 🗄️ Database Schema & Storage Architecture
 
-BahiKhata synthesizes principles from premier digital products:
+```mermaid
+erDiagram
+    CUSTOMERS ||--o{ TRANSACTIONS : has
+    
+    CUSTOMERS {
+        string id PK "UUID v4"
+        string name "Customer Full Name"
+        string phone "Normalized E.164 without plus e.g. 919876543210"
+        array additionalPhones "Secondary numbers from contact card"
+        int amount "Net outstanding balance in integer Paise"
+        string dueDate "ISO date YYYY-MM-DD or null"
+        string note "Customer memo or address"
+        string status "pending | paid | archived"
+        string lastReminderSentAt "ISO Timestamp"
+        string createdAt "ISO Timestamp"
+        string updatedAt "ISO Timestamp"
+    }
 
-- **Apple Human Interface:** Negative letter-spacing, generous whitespace, subtle hairline dividers (`#e8e6e1`), restrained color palettes, and focused typography.
-- **Wise (TransferWise):** Crystal-clear financial status hierarchy, bold tabular monetary digits (`font-mono`), high-contrast due indicators, and Scandinavian-clean card geometry.
-- **Linear:** High-efficiency information density, instant search with keyboard shortcuts, refined sort dropdowns, and responsive filter chips.
-- **Material Design 3:** Fixed bottom navigation (thumb zone), mobile drawer sheets with drag indicators, and minimum 44px touch targets.
-- **Intercom:** Authentic chat bubble previews and communication-first workflow design.
+    TRANSACTIONS {
+        string id PK "UUID v4"
+        string customerId FK "References CUSTOMERS.id"
+        string type "credit | payment"
+        int amount "Strictly positive integer Paise"
+        string date "ISO date YYYY-MM-DD"
+        string note "Item details, bill number, remarks"
+        string createdAt "ISO Timestamp"
+    }
+```
 
 ---
 
 ## 🛠️ Technology Stack
 
-| Layer | Technologies | Purpose |
+| Layer | Technology | Key Capabilities |
 | :--- | :--- | :--- |
-| **Frontend Framework** | React 19.2, TypeScript 6 | Component composition and compile-time type safety |
-| **Styling & Tokens** | TailwindCSS v4, Inter Variable Typography | Modern CSS-first utility styling and design tokens |
-| **Local Persistence** | IndexedDB (Database: `BahiKhataDB` v2) | Structured offline-first client storage |
-| **Native Runtime** | Capacitor v8 Android, Native Java Plugin | Android WebView runtime and native Intent bridges |
-| **Testing Engine** | Vitest 4.1 | High-speed unit and regression test suite |
-| **Linting & Code Quality** | Oxlint 1.79 | Fast AST-based static analysis |
-| **Build & Tooling** | Vite 8, Gradle 8, Android SDK 36, Java 17 | Web bundling, asset compression, and APK compilation |
+| **Presentation Framework** | React 19.2 + TypeScript 6 | Virtual DOM, Hooks, strict type-checking |
+| **Styling & System Tokens**| TailwindCSS v4 + CSS Variables | Dynamic density, text-scaling, brand tokens |
+| **Native Runtime** | Capacitor v8.1 (Android) | High-speed WebView bridge, Intent handlers |
+| **Android Native Layer** | Java 17 + Android SDK 36 | `Intent.ACTION_PICK` Contact Picker Plugin |
+| **Local Storage Engine** | IndexedDB v2 (`bahikhata_db`) | Fast on-device client database with cascade delete |
+| **Test Runner** | Vitest 4.1 | 37/37 passing unit tests |
+| **Linter & Formatter** | Oxlint 1.79 | Zero error static code inspection |
+| **Build & Compilation** | Vite 8 + Gradle 8.14 | Sub-second bundle times, native APK packaging |
 
 ---
 
-## 💻 Local Development & Android Build Guide
+## 💻 Developer Quickstart & Build Instructions
 
 ### Prerequisites
-- Node.js (v20+) & npm
-- Java JDK 17 (Temurin / OpenJDK)
-- Android SDK Platform 36 & build-tools (35.0.0+)
-- Android device or emulator with ADB debugging enabled
+- **Node.js:** v20+ with npm
+- **Java:** JDK 17 (Eclipse Temurin / OpenJDK)
+- **Android SDK:** Platforms 34–36 with build-tools
+- **ADB:** Android platform-tools
 
-### 1. Clone & Install Dependencies
+### 1. Clone & Setup
 ```bash
 git clone https://github.com/joydeepdas-01/BahiKhata.git
 cd BahiKhata
 npm install
 ```
 
-### 2. Start Vite Development Server
+### 2. Run Local Development Server
 ```bash
 npm run dev
 ```
 
-### 3. Run Quality Verification Suite
+### 3. Run Verification Suite
 ```bash
 npm run lint
 npm test
@@ -328,10 +402,10 @@ npx cap sync android
 cd android
 ./gradlew.bat assembleDebug
 ```
-The compiled APK will be output at:  
+The compiled binary will be located at:
 `android/app/build/outputs/apk/debug/app-debug.apk`
 
-### 6. Deploy & Install Directly to Phone via ADB
+### 6. Install to Connected Android Device
 ```bash
 adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 adb shell am start -n com.bahikhata.app/.MainActivity
@@ -341,7 +415,7 @@ adb shell am start -n com.bahikhata.app/.MainActivity
 
 ## 🧪 Automated Testing & Quality Assurance
 
-BahiKhata features 100% test pass rates across all core domain modules:
+All 37 test suites run on every commit and pass with 100% reliability:
 
 ```text
  ✓ src/domain/__tests__/customer.test.ts (4 tests)
@@ -354,30 +428,22 @@ BahiKhata features 100% test pass rates across all core domain modules:
 
  Test Files  7 passed (7)
       Tests  37 passed (37)
-```
-
-Run test suite anytime with:
-```bash
-npm test
+   Duration  350ms
 ```
 
 ---
 
-## 🔒 Data Privacy & Security Commitments
+## 🔒 Privacy & Security Commitments
 
-1. **Zero Cloud Dependencies:** Your customer data, phone numbers, and transaction ledgers never leave your physical device.
-2. **No Tracking or Telemetry:** BahiKhata contains zero analytics SDKs, advertising trackers, or tracking pixels.
-3. **Contact Sandboxing:** Contact information retrieved via Android's native contact picker remains exclusively within local device storage.
-4. **Transparent User Control:** Reminders only generate standard deep links; you always review and perform the final Send action inside WhatsApp.
+1. **Zero External Communication:** The app makes zero network calls to external APIs or analytics servers.
+2. **Contact Sandboxing:** Contact names and numbers picked through Android's contact picker never leave device storage.
+3. **No Cloud Leakage:** Backups are generated locally as standard `.csv` or `.json` files saved directly to your phone.
+4. **Controlled Messaging:** All reminder messages require user review and explicit send confirmation inside the official WhatsApp app.
 
 ---
 
-## 📄 License
+## 📄 License & Credits
 
 Distributed under the **MIT License**. See [LICENSE](LICENSE) for full details.
 
----
-
-<p align="center">
-  Crafted with ❤️ for India's hardworking merchants and small businesses.
-</p>
+Crafted with ❤️ for India's hardworking merchants and small shopkeepers.
