@@ -71,7 +71,7 @@ Add Customer (or Pick Contact) ➔ Record Credit/Payment ➔ Check Balance ➔ S
 
 | Build Asset | Target Version | SHA-256 Checksum | Download Link |
 | :--- | :--- | :--- | :--- |
-| **BahiKhata v2.0.0 APK** | Android 7.0+ (Nougat through 15) | `2b6aa0ce503495c7d438f6f501916ad779a20937425ed611384f42fa1fbdec8b` | [📦 Download BahiKhata-v2.0.0.apk](releases/v2.0.0/BahiKhata-v2.0.0.apk) |
+| **BahiKhata v2.0.0 APK** | Android 7.0+ (Nougat through 15) | `38c26beeaf6fa446c6c8a09e0ccec8fff0cef9107d658d3f328bd2e03002ca7e` | [📦 Download BahiKhata-v2.0.0.apk](releases/v2.0.0/BahiKhata-v2.0.0.apk) |
 | **Checksum Manifest** | Any | Text File | [📄 SHA256SUMS.txt](releases/v2.0.0/SHA256SUMS.txt) |
 
 ### Direct Phone Installation

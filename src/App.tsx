@@ -158,8 +158,8 @@ function App() {
         onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
-      {/* Main Workspace Screen */}
-      <main className="flex-1 max-w-4xl w-full mx-auto p-2 sm:p-4 pb-24">
+      {/* Main Workspace Screen with Safe Bottom Clearance */}
+      <main className="flex-1 max-w-4xl w-full mx-auto px-3 sm:px-4 pt-2 pb-32">
         {loading ? (
           <div className="space-y-3.5 animate-pulse mt-2">
             <div className="h-28 bg-bk-surface border border-bk-border rounded-2xl" />

@@ -39,14 +39,15 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
   const isDue = customer.amount > 0;
   const isSettled = customer.amount === 0;
 
-  // 2 initials
-  const initials = customer.name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase() || 'BK';
+  // 2 uppercase initials
+  const initials =
+    customer.name
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase() || 'BK';
 
   return (
     <div
@@ -89,7 +90,7 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
             {formatIndianCurrency(customer.amount)}
           </span>
           <span
-            className={`text-[10px] font-bold uppercase tracking-wider mt-1 px-1.5 py-0.5 rounded-md ${
+            className={`text-[9px] font-bold uppercase tracking-wider mt-1 px-1.5 py-0.2 rounded ${
               isDue
                 ? 'bg-red-50 text-bk-status-overdue border border-red-100'
                 : isSettled
@@ -113,7 +114,7 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
                   dueStatus === 'overdue'
                     ? 'text-bk-status-overdue'
                     : dueStatus === 'due_today'
-                    ? 'text-bk-status-pending'
+                    ? 'text-amber-700'
                     : 'text-bk-text-secondary'
                 }`}
               >
@@ -139,43 +140,13 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
         )}
       </div>
 
-      {/* 3. Action Area */}
+      {/* 3. Action Area: Standardized 2-Tier Structured Layout (Zero wrapping issues) */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex items-center justify-between border-t border-bk-border pt-2.5 mt-0.5 gap-1.5"
+        className="border-t border-bk-border pt-2.5 mt-0.5 space-y-2 select-none"
       >
-        {/* Secondary actions: Edit & Delete */}
-        <div className="flex items-center gap-1 shrink-0">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              triggerHaptic('light');
-              onEdit(customer);
-            }}
-            className="w-8 h-8 rounded-lg border border-bk-border bg-white text-bk-text-tertiary hover:text-bk-text-primary hover:bg-bk-surface-soft flex items-center justify-center cursor-pointer transition-colors"
-            title="Edit Customer"
-            aria-label="Edit Customer"
-          >
-            <EditIcon size={13} />
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              triggerHaptic('warning');
-              onDelete(customer.id, customer.name);
-            }}
-            className="w-8 h-8 rounded-lg border border-bk-border bg-white text-bk-text-tertiary hover:text-bk-status-overdue hover:bg-red-50 hover:border-red-200 flex items-center justify-center cursor-pointer transition-colors"
-            title="Delete Ledger"
-            aria-label="Delete Ledger"
-          >
-            <TrashIcon size={13} />
-          </button>
-        </div>
-
-        {/* Primary financial actions: Credit, Payment, Remind */}
-        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+        {/* Tier 1: Primary Financial Actions (Symmetrical 50/50 Split) */}
+        <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={(e) => {
@@ -183,11 +154,11 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
               triggerHaptic('light');
               onQuickTransaction(customer, 'credit');
             }}
-            className="h-8 px-2 sm:px-2.5 bg-red-50/80 hover:bg-red-100 text-bk-status-overdue border border-red-200/80 text-xs font-bold rounded-lg flex items-center gap-1 cursor-pointer transition-all active:scale-95"
-            title="Give Credit"
+            className="h-8.5 rounded-lg bg-red-50 hover:bg-red-100/90 active:bg-red-200 text-bk-status-overdue border border-red-200/90 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
+            title="Record Credit Given"
           >
-            <ArrowUpRightIcon size={12} />
-            <span>+ Credit</span>
+            <ArrowUpRightIcon size={13} />
+            <span>+ Gave Credit</span>
           </button>
 
           <button
@@ -197,14 +168,46 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
               triggerHaptic('light');
               onQuickTransaction(customer, 'payment');
             }}
-            className="h-8 px-2 sm:px-2.5 bg-emerald-50/80 hover:bg-emerald-100 text-bk-status-paid border border-emerald-200/80 text-xs font-bold rounded-lg flex items-center gap-1 cursor-pointer transition-all active:scale-95"
-            title="Receive Payment"
+            className="h-8.5 rounded-lg bg-emerald-50 hover:bg-emerald-100/90 active:bg-emerald-200 text-bk-status-paid border border-emerald-200/90 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
+            title="Record Payment Received"
           >
-            <ArrowDownLeftIcon size={12} />
-            <span>- Payment</span>
+            <ArrowDownLeftIcon size={13} />
+            <span>- Got Payment</span>
           </button>
+        </div>
 
-          {isDue && (
+        {/* Tier 2: Secondary Utilities (Edit/Delete) on Left, WhatsApp Follow-Up on Right */}
+        <div className="flex items-center justify-between gap-2 pt-0.5">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                triggerHaptic('light');
+                onEdit(customer);
+              }}
+              className="h-7 px-2.5 rounded-md border border-bk-border bg-white text-bk-text-secondary hover:text-bk-text-primary hover:bg-bk-surface-soft flex items-center gap-1 text-[11px] font-semibold cursor-pointer transition-colors"
+              title="Edit Customer"
+            >
+              <EditIcon size={12} />
+              <span>Edit</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                triggerHaptic('warning');
+                onDelete(customer.id, customer.name);
+              }}
+              className="h-7 w-7 rounded-md border border-bk-border bg-white text-bk-text-tertiary hover:text-bk-status-overdue hover:bg-red-50 hover:border-red-200 flex items-center justify-center text-[11px] cursor-pointer transition-colors"
+              title="Delete Ledger"
+            >
+              <TrashIcon size={12} />
+            </button>
+          </div>
+
+          {isDue ? (
             <button
               type="button"
               onClick={(e) => {
@@ -212,12 +215,16 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
                 triggerHaptic('standard');
                 onPrepareReminder(customer);
               }}
-              className="h-8 px-2.5 bg-bk-brand-primary hover:bg-bk-brand-primary-hover active:bg-bk-brand-primary-pressed text-white text-xs font-bold rounded-lg flex items-center gap-1 cursor-pointer shadow-2xs transition-all active:scale-95"
+              className="h-7 px-3 rounded-md bg-bk-brand-primary hover:bg-bk-brand-primary-hover active:bg-bk-brand-primary-pressed text-white text-[11px] font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs transition-all active:scale-[0.98]"
               title="Send WhatsApp Reminder"
             >
-              <WhatsAppIcon size={13} />
-              <span>Remind</span>
+              <WhatsAppIcon size={12} />
+              <span>Send Reminder</span>
             </button>
+          ) : (
+            <span className="text-[10px] text-bk-status-paid font-bold flex items-center gap-1 px-1">
+              ✓ Settled
+            </span>
           )}
         </div>
       </div>

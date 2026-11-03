@@ -37,7 +37,7 @@ This release marks a complete **UI/UX modernization, workflow optimization, and 
 
 | File | Size | SHA-256 Checksum |
 | :--- | :--- | :--- |
-| **`BahiKhata-v2.0.0.apk`** | ~5.5 MB | `2b6aa0ce503495c7d438f6f501916ad779a20937425ed611384f42fa1fbdec8b` |
+| **`BahiKhata-v2.0.0.apk`** | ~4.3 MB | `38c26beeaf6fa446c6c8a09e0ccec8fff0cef9107d658d3f328bd2e03002ca7e` |
 
 ### 📱 Android Requirements
 - Minimum Android: **Android 7.0 (API Level 24 - Nougat)**
@@ -52,3 +52,4 @@ This release marks a complete **UI/UX modernization, workflow optimization, and 
 - **Native Runtime:** Capacitor v8.1 + Custom Native Java Plugin (`ContactPickerPlugin.java`)
 - **Storage:** IndexedDB v2 (`bahikhata_db`)
 - **Testing:** Vitest 4.1 — 37/37 passing unit tests
+

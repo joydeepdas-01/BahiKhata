@@ -98,19 +98,21 @@ export const CustomerList: React.FC<CustomerListProps> = ({
   };
 
   return (
-    <AppContentContainer className="flex flex-col space-y-3.5 py-1.5">
-      {/* 1. Financial Overview Hero (Wise + Apple discipline) */}
-      <div className="bg-bk-surface border border-bk-border rounded-2xl p-4 sm:p-5 shadow-xs select-none">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <span className="text-[11px] font-bold text-bk-text-secondary uppercase tracking-wider block">
+    <AppContentContainer className="flex flex-col space-y-3 py-1">
+      {/* 1. Financial Overview Hero (Wise + Apple discipline: Integrated, Compact) */}
+      <div className="bg-bk-surface border border-bk-border rounded-2xl p-4 shadow-xs select-none">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <span className="text-[10px] font-bold text-bk-text-secondary uppercase tracking-wider block">
               Total You Will Receive
             </span>
-            <div className="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight text-bk-status-overdue font-mono">
+            <div className="mt-0.5 text-2xl sm:text-3xl font-extrabold tracking-tight text-bk-status-overdue font-mono">
               {formatIndianCurrency(summary.totalPendingPaise)}
             </div>
-            <div className="flex items-center gap-2.5 mt-1 text-xs text-bk-text-tertiary">
-              <span className="font-medium">{summary.pendingCount} pending accounts</span>
+            <div className="flex items-center gap-2 mt-1 text-xs text-bk-text-tertiary">
+              <span className="font-semibold text-bk-text-secondary">
+                {summary.pendingCount} pending accounts
+              </span>
               {summary.overdueCount > 0 && (
                 <span className="text-bk-status-overdue font-bold">
                   • {summary.overdueCount} overdue
@@ -119,67 +121,67 @@ export const CustomerList: React.FC<CustomerListProps> = ({
             </div>
           </div>
 
-          {/* Today's Activity Badge */}
-          <div className="p-2.5 sm:p-3 bg-bk-surface-soft border border-bk-border rounded-xl text-xs space-y-1 shrink-0">
-            <div className="text-[10px] font-bold text-bk-text-secondary uppercase tracking-wider">
+          {/* Today's Cashflow Badge - Integrated Side-by-Side */}
+          <div className="p-2 sm:p-2.5 bg-bk-surface-soft border border-bk-border rounded-xl text-xs space-y-0.5 shrink-0 text-right">
+            <div className="text-[9px] font-bold text-bk-text-secondary uppercase tracking-wider">
               Today's Activity
             </div>
-            <div className="flex items-center gap-3 font-mono font-bold">
-              <span className="text-bk-status-overdue flex items-center gap-1">
-                <ArrowUpRightIcon size={13} /> {formatIndianCurrency(summary.todayCreditPaise)}
+            <div className="flex items-center gap-2 font-mono font-bold text-xs pt-0.5">
+              <span className="text-bk-status-overdue flex items-center gap-0.5" title="Credit Given Today">
+                <ArrowUpRightIcon size={12} /> {formatIndianCurrency(summary.todayCreditPaise)}
               </span>
-              <span className="text-bk-status-paid flex items-center gap-1">
-                <ArrowDownLeftIcon size={13} /> {formatIndianCurrency(summary.todayPaymentPaise)}
+              <span className="text-bk-status-paid flex items-center gap-0.5" title="Payment Received Today">
+                <ArrowDownLeftIcon size={12} /> {formatIndianCurrency(summary.todayPaymentPaise)}
               </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 2. Search & Sort Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center justify-between">
+      {/* 2. Combined Search & Sort Toolbar - Single Line Efficiency */}
+      <div className="flex gap-2 items-center">
         {/* Search Input */}
         <div className="relative flex-1">
           <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-bk-text-tertiary pointer-events-none">
-            <SearchIcon size={16} />
+            <SearchIcon size={15} />
           </span>
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search customers by name, phone, or note..."
-            className="w-full h-10 pl-9 pr-8 border border-bk-border rounded-xl bg-white text-bk-text-primary text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary shadow-2xs"
+            placeholder="Search name, phone, or memo..."
+            className="w-full h-10 pl-9 pr-7 border border-bk-border rounded-xl bg-white text-bk-text-primary text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary shadow-2xs"
           />
           {searchTerm && (
             <button
               onClick={() => setSearchTerm('')}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-bk-text-tertiary hover:text-bk-text-primary text-xs cursor-pointer"
+              className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-bk-text-tertiary hover:text-bk-text-primary text-xs cursor-pointer"
             >
-              Clear
+              ×
             </button>
           )}
         </div>
 
-        {/* Sort Selector */}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Compact Sort Selector */}
+        <div className="shrink-0">
           <select
             value={sortOption}
             onChange={(e) => {
               triggerHaptic('light');
               setSortOption(e.target.value as CustomerSortOption);
             }}
-            className="h-10 px-3 border border-bk-border rounded-xl bg-white text-bk-text-secondary text-xs font-semibold focus:outline-none cursor-pointer shadow-2xs"
+            className="h-10 px-2.5 sm:px-3 border border-bk-border rounded-xl bg-white text-bk-text-secondary text-xs font-semibold focus:outline-none cursor-pointer shadow-2xs"
           >
-            <option value="recent">Sort: Recent Activity</option>
-            <option value="balance_desc">Sort: Highest Balance</option>
-            <option value="name_asc">Sort: Name (A-Z)</option>
-            <option value="due_date">Sort: Due Date</option>
+            <option value="recent">Recent Activity</option>
+            <option value="balance_desc">Highest Due</option>
+            <option value="name_asc">Name (A-Z)</option>
+            <option value="due_date">Due Date</option>
           </select>
         </div>
       </div>
 
       {/* 3. Filter Status Chips */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none select-none">
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none select-none">
         {(['all', 'pending', 'due_today', 'overdue', 'paid'] as const).map((f) => {
           const label =
             f === 'all'
@@ -213,13 +215,13 @@ export const CustomerList: React.FC<CustomerListProps> = ({
         })}
       </div>
 
-      {/* 4. Customer List Cards Section */}
+      {/* 4. Customer Cards Grid */}
       <div className="pt-0.5">
         {filteredAndSortedCustomers.length === 0 ? (
           /* Professional Empty State */
           <div className="p-8 sm:p-12 border border-dashed border-bk-border rounded-2xl bg-white flex flex-col items-center justify-center text-center space-y-3">
             <div className="opacity-25 text-bk-brand-primary">
-              <BahiKhataLogo size={56} />
+              <BahiKhataLogo size={52} />
             </div>
             <div className="space-y-1">
               <h4 className="font-extrabold text-bk-text-primary text-sm sm:text-base">
@@ -227,7 +229,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
               </h4>
               <p className="text-xs text-bk-text-secondary max-w-sm leading-relaxed">
                 {searchTerm || filter !== 'all'
-                  ? 'Try modifying your search query or switching to another filter.'
+                  ? 'Try modifying your search text or switching to another filter.'
                   : 'Add your first customer to record credit, track payments, and send WhatsApp reminders.'}
               </p>
             </div>
@@ -240,7 +242,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
                 }}
                 className="mt-2 h-9 px-4 bg-bk-brand-primary hover:bg-bk-brand-primary-hover active:bg-bk-brand-primary-pressed text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
               >
-                <PlusIcon size={15} />
+                <PlusIcon size={14} />
                 <span>Add First Customer</span>
               </button>
             )}

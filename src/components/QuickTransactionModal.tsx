@@ -63,12 +63,12 @@ export const QuickTransactionModal: React.FC<QuickTransactionModalProps> = ({
     triggerHaptic('standard');
 
     if (!selectedCustomerId) {
-      setError('Please select a customer');
+      setError('Please select a customer account');
       return;
     }
 
     if (!amount.trim()) {
-      setError('Please enter an amount');
+      setError('Please enter a valid amount');
       return;
     }
 
@@ -97,9 +97,9 @@ export const QuickTransactionModal: React.FC<QuickTransactionModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-xs select-none p-0 sm:p-4 overflow-hidden animate-fade-in">
       <div className="absolute inset-0" onClick={onClose} />
 
-      <div className="relative w-full max-w-md bg-bk-surface border-t sm:border border-bk-border rounded-t-2xl sm:rounded-2xl shadow-xl flex flex-col overflow-hidden animate-slide-up max-h-[90vh]">
+      <div className="relative w-full max-w-md bg-bk-surface border-t sm:border border-bk-border rounded-t-2xl sm:rounded-2xl shadow-xl flex flex-col overflow-hidden animate-slide-up max-h-[92dvh]">
         {/* Mobile Drag Indicator */}
-        <div className="sm:hidden w-10 h-1 bg-bk-border rounded-full mx-auto mt-2" />
+        <div className="sm:hidden w-10 h-1 bg-bk-border rounded-full mx-auto mt-2 shrink-0" />
 
         {/* Compact Header */}
         <div className="px-4 py-3 border-b border-bk-border flex items-center justify-between bg-bk-surface-soft/60 shrink-0">
@@ -119,8 +119,8 @@ export const QuickTransactionModal: React.FC<QuickTransactionModalProps> = ({
           </button>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-4 space-y-3.5 select-text overflow-y-auto">
+        {/* Form Body - Scrollable Container */}
+        <form id="quick-transaction-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 space-y-3.5 select-text">
           {error && (
             <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-bk-status-overdue flex items-center gap-1.5">
               <AlertCircleIcon size={14} className="shrink-0" />
@@ -181,7 +181,7 @@ export const QuickTransactionModal: React.FC<QuickTransactionModalProps> = ({
               Amount (₹) *
             </label>
             <div className="relative flex items-center">
-              <span className="absolute left-3.5 text-base font-bold text-bk-text-secondary">₹</span>
+              <span className="absolute left-3.5 text-base font-bold text-bk-text-secondary pointer-events-none">₹</span>
               <input
                 type="number"
                 step="any"
@@ -191,7 +191,7 @@ export const QuickTransactionModal: React.FC<QuickTransactionModalProps> = ({
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="0.00"
-                className="w-full pl-8 pr-4 py-2 border border-bk-border rounded-xl bg-white text-base font-bold font-mono text-bk-text-primary focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary"
+                className="w-full h-10 pl-8 pr-4 border border-bk-border rounded-xl bg-white text-base font-bold font-mono text-bk-text-primary focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary"
               />
             </div>
           </div>
@@ -204,7 +204,7 @@ export const QuickTransactionModal: React.FC<QuickTransactionModalProps> = ({
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-2 border border-bk-border rounded-xl bg-white text-xs font-medium text-bk-text-primary focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary"
+                className="w-full h-10 px-3 border border-bk-border rounded-xl bg-white text-xs font-medium text-bk-text-primary focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary"
               />
             </div>
 
@@ -217,33 +217,34 @@ export const QuickTransactionModal: React.FC<QuickTransactionModalProps> = ({
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="e.g. Bill #120, Cash"
-                className="w-full px-3 py-2 border border-bk-border rounded-xl bg-white text-xs text-bk-text-primary focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary"
+                className="w-full h-10 px-3 border border-bk-border rounded-xl bg-white text-xs text-bk-text-primary focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary"
               />
             </div>
           </div>
-
-          {/* Footer Actions */}
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-bk-border mt-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-3.5 py-2 border border-bk-border rounded-xl text-xs font-semibold text-bk-text-secondary hover:text-bk-text-primary bg-white cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className={`px-5 py-2 rounded-xl text-xs font-bold text-white shadow-2xs cursor-pointer transition-all active:scale-95 ${
-                transType === 'credit'
-                  ? 'bg-bk-status-overdue hover:bg-red-700'
-                  : 'bg-bk-status-paid hover:bg-emerald-700'
-              }`}
-            >
-              {isSubmitting ? 'Saving...' : `Save ${transType === 'credit' ? 'Credit' : 'Payment'}`}
-            </button>
-          </div>
         </form>
+
+        {/* Fixed Footer Actions - Always Accessible Above Keyboard */}
+        <div className="p-3 border-t border-bk-border bg-bk-surface-soft/60 flex items-center justify-end gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-9 px-3.5 border border-bk-border rounded-xl text-xs font-semibold text-bk-text-secondary hover:text-bk-text-primary bg-white cursor-pointer shadow-2xs"
+          >
+            Cancel
+          </button>
+          <button
+            form="quick-transaction-form"
+            type="submit"
+            disabled={isSubmitting}
+            className={`h-9 px-5 rounded-xl text-xs font-bold text-white shadow-2xs cursor-pointer transition-all active:scale-95 ${
+              transType === 'credit'
+                ? 'bg-bk-status-overdue hover:bg-red-700'
+                : 'bg-bk-status-paid hover:bg-emerald-700'
+            }`}
+          >
+            {isSubmitting ? 'Saving...' : `Save ${transType === 'credit' ? 'Credit' : 'Payment'}`}
+          </button>
+        </div>
       </div>
     </div>
   );

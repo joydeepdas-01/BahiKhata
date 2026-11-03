@@ -46,7 +46,7 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
     }
   }, [isOpen]);
 
-  // Close on outside click
+  // Close on outside click or Escape key
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -54,11 +54,19 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
       }
     };
 
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      window.addEventListener('keydown', handleKeyDown);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen]);
 
@@ -222,3 +230,4 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
     </div>
   );
 };
+
