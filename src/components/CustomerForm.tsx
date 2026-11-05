@@ -9,7 +9,7 @@ import { useDisplaySettings } from '../context/DisplaySettingsContext';
 interface CustomerFormProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (customer: Omit<Customer, 'id' | 'status'>, initialType?: 'credit' | 'payment') => Promise<Customer>;
+  onSubmit: (customer: Omit<Customer, 'id' | 'status'>, initialType?: any) => Promise<Customer>;
   onUpdate?: (customer: Customer) => Promise<void>;
   editingCustomer?: Customer | null;
   existingCustomers?: Customer[];

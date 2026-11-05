@@ -22,6 +22,8 @@ function App() {
     error,
     addCustomer,
     recordTransaction,
+    recordMutualAdjustment,
+    reverseTransaction,
     deleteTransaction,
     getCustomerTransactions,
     addBulkCustomers,
@@ -45,7 +47,17 @@ function App() {
   // Focus targets
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-  const [quickTransInitialType, setQuickTransInitialType] = useState<'credit' | 'payment'>('credit');
+  const [quickTransInitialType, setQuickTransInitialType] = useState<string>('credit_given');
+
+  // Keep selectedCustomer in sync with customers state
+  useEffect(() => {
+    if (selectedCustomer) {
+      const updated = customers.find((c) => c.id === selectedCustomer.id);
+      if (updated && updated !== selectedCustomer) {
+        setSelectedCustomer(updated);
+      }
+    }
+  }, [customers, selectedCustomer]);
 
   // Onboarding state initialized without cascading render
   const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(() => {
@@ -133,9 +145,9 @@ function App() {
     setIsWhatsAppOpen(true);
   };
 
-  const handleQuickTransaction = (customer: Customer, type: 'credit' | 'payment') => {
+  const handleQuickTransaction = (customer: Customer, type: string) => {
     setSelectedCustomer(customer);
-    setQuickTransInitialType(type);
+    setQuickTransInitialType(type === 'credit' ? 'credit_given' : type === 'payment' ? 'payment_received' : type);
     setIsQuickTransOpen(true);
   };
 
@@ -206,6 +218,7 @@ function App() {
         onQuickAction={() => {
           if (customers.length > 0) {
             setSelectedCustomer(customers[0]);
+            setQuickTransInitialType('credit_given');
             setIsQuickTransOpen(true);
           } else {
             setIsAddFormOpen(true);
@@ -239,6 +252,7 @@ function App() {
         }}
         onDeleteCustomer={(id) => {
           deleteCustomer(id);
+          setIsDetailOpen(false);
         }}
         onPrepareReminder={(c) => {
           handlePrepareReminder(c);
@@ -246,6 +260,8 @@ function App() {
         getCustomerTransactions={getCustomerTransactions}
         onRecordTransaction={recordTransaction}
         onDeleteTransaction={deleteTransaction}
+        onRecordMutualAdjustment={recordMutualAdjustment}
+        onReverseTransaction={reverseTransaction}
       />
 
       {/* Quick Transaction Entry Modal */}

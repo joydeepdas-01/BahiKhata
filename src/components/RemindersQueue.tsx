@@ -20,10 +20,13 @@ export const RemindersQueue: React.FC<RemindersQueueProps> = ({
   const { triggerHaptic } = useDisplaySettings();
   const [filter, setFilter] = useState<'all' | 'overdue' | 'due_today'>('all');
 
-  // Filter only customers who actually owe money
+  // Filter only customers who actually owe money (Receivable > 0)
   const pendingCustomers = useMemo(() => {
     return customers
-      .filter((c) => c.amount > 0 && c.status !== 'archived')
+      .filter((c) => {
+        const rec = c.receivablePaise ?? (c.amount > 0 ? c.amount : 0);
+        return rec > 0 && c.status !== 'archived';
+      })
       .sort((a, b) => {
         // Priority: Overdue first, then Due Today, then others
         const statusA = classifyDueDate(a.dueDate);
@@ -34,7 +37,9 @@ export const RemindersQueue: React.FC<RemindersQueueProps> = ({
         if (diff !== 0) return diff;
 
         // If same category, highest due amount first
-        return b.amount - a.amount;
+        const recA = a.receivablePaise ?? (a.amount > 0 ? a.amount : 0);
+        const recB = b.receivablePaise ?? (b.amount > 0 ? b.amount : 0);
+        return recB - recA;
       });
   }, [customers]);
 
@@ -49,7 +54,7 @@ export const RemindersQueue: React.FC<RemindersQueueProps> = ({
   }, [pendingCustomers, filter]);
 
   const totalDueInQueue = useMemo(() => {
-    return filteredQueue.reduce((acc, c) => acc + c.amount, 0);
+    return filteredQueue.reduce((acc, c) => acc + (c.receivablePaise ?? (c.amount > 0 ? c.amount : 0)), 0);
   }, [filteredQueue]);
 
   return (

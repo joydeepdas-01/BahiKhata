@@ -46,7 +46,8 @@ export const WhatsAppPreview: React.FC<WhatsAppPreviewProps> = ({
       DEFAULT_TEMPLATES.find((t) => t.language === language && t.toneKey === currentTone) ||
       DEFAULT_TEMPLATES[0];
 
-    const formattedAmount = formatIndianCurrency(customer.amount);
+    const duePaise = customer.receivablePaise ?? (customer.amount > 0 ? customer.amount : 0);
+    const formattedAmount = formatIndianCurrency(duePaise);
     const formattedDueDate = reminderIncludeDueDate && customer.dueDate ? formatDisplayDate(customer.dueDate) : '';
 
     let parsed = parseTemplate(template.text, {

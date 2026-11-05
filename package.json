@@ -1,7 +1,7 @@
 {
   "name": "bahikhata",
   "private": true,
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "A modern, offline-first digital Bahi-Khata for customer credit, payment, and WhatsApp reminder tracking.",
   "license": "MIT",
   "type": "module",

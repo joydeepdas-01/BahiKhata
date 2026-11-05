@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Customer, CustomerSummary, CustomerSortOption } from '../domain/customer';
+import { Customer, CustomerSummary, CustomerSortOption, CustomerFilterOption } from '../domain/customer';
 import { formatIndianCurrency } from '../domain/amountFormatter';
 import { classifyDueDate } from '../domain/dateClassifier';
 import { BahiKhataLogo } from './BahiKhataLogo';
@@ -15,13 +15,13 @@ interface CustomerListProps {
   summary: CustomerSummary;
   onSelectCustomer: (customer: Customer) => void;
   onEdit: (customer: Customer) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string, name: string) => void;
   onPrepareReminder: (customer: Customer) => void;
   onOpenAddForm: () => void;
   onQuickTransaction: (customer: Customer, type: 'credit' | 'payment') => void;
 }
 
-type FilterStatus = 'all' | 'pending' | 'due_today' | 'overdue' | 'paid';
+type FilterStatus = 'all' | 'pending' | 'payable' | 'advance' | 'due_today' | 'overdue' | 'paid';
 
 export const CustomerList: React.FC<CustomerListProps> = ({
   customers,
@@ -35,13 +35,12 @@ export const CustomerList: React.FC<CustomerListProps> = ({
 }) => {
   const { defaultFilter, confirmDelete, triggerHaptic } = useDisplaySettings();
   const [searchTerm, setSearchTerm] = useState('');
-  const [filter, setFilter] = useState<FilterStatus>(defaultFilter);
+  const [filter, setFilter] = useState<FilterStatus>(defaultFilter as FilterStatus);
   const [sortOption, setSortOption] = useState<CustomerSortOption>('recent');
 
   const filteredAndSortedCustomers = useMemo(() => {
     // 1. Filter
     const filtered = customers.filter((c) => {
-      // Search
       const search = searchTerm.toLowerCase().trim();
       const matchesSearch =
         !search ||
@@ -51,17 +50,19 @@ export const CustomerList: React.FC<CustomerListProps> = ({
 
       if (!matchesSearch) return false;
 
-      // Status
-      if (filter === 'all') return c.status !== 'archived';
-      if (filter === 'paid') return c.amount <= 0 || c.status === 'paid';
+      const rec = c.receivablePaise ?? (c.amount > 0 ? c.amount : 0);
+      const pay = c.payablePaise ?? 0;
+      const adv = c.customerAdvancePaise ?? (c.amount < 0 ? Math.abs(c.amount) : 0);
 
-      // For pending/due filters
-      if (c.amount <= 0) return false;
+      if (filter === 'all') return c.status !== 'archived';
+      if (filter === 'pending') return rec > 0;
+      if (filter === 'payable') return pay > 0;
+      if (filter === 'advance') return adv > 0;
+      if (filter === 'paid') return rec === 0 && pay === 0;
 
       const dueStatus = classifyDueDate(c.dueDate);
-      if (filter === 'pending') return true;
-      if (filter === 'due_today') return dueStatus === 'due_today';
-      if (filter === 'overdue') return dueStatus === 'overdue';
+      if (filter === 'due_today') return rec > 0 && dueStatus === 'due_today';
+      if (filter === 'overdue') return rec > 0 && dueStatus === 'overdue';
 
       return true;
     });
@@ -73,7 +74,9 @@ export const CustomerList: React.FC<CustomerListProps> = ({
         const dateB = b.updatedAt || b.createdAt || '';
         return dateB.localeCompare(dateA);
       } else if (sortOption === 'balance_desc') {
-        return b.amount - a.amount;
+        const balA = a.receivablePaise ?? (a.amount > 0 ? a.amount : 0);
+        const balB = b.receivablePaise ?? (b.amount > 0 ? b.amount : 0);
+        return balB - balA;
       } else if (sortOption === 'name_asc') {
         return a.name.localeCompare(b.name);
       } else if (sortOption === 'due_date') {
@@ -89,49 +92,58 @@ export const CustomerList: React.FC<CustomerListProps> = ({
     if (confirmDelete) {
       if (window.confirm(`Delete the ledger for "${name}"? This action cannot be undone.`)) {
         triggerHaptic('warning');
-        onDelete(id);
+        onDelete(id, name);
       }
     } else {
       triggerHaptic('warning');
-      onDelete(id);
+      onDelete(id, name);
     }
   };
 
   return (
     <AppContentContainer className="flex flex-col space-y-3 py-1">
-      {/* 1. Financial Overview Hero (Wise + Apple discipline: Integrated, Compact) */}
+      {/* 1. Dual-Position Financial Overview Hero (Wise + Apple minimal hierarchy) */}
       <div className="bg-bk-surface border border-bk-border rounded-2xl p-4 shadow-xs select-none">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-bold text-bk-text-secondary uppercase tracking-wider block">
-              Total You Will Receive
-            </span>
-            <div className="mt-0.5 text-2xl sm:text-3xl font-extrabold tracking-tight text-bk-status-overdue font-mono">
-              {formatIndianCurrency(summary.totalPendingPaise)}
-            </div>
-            <div className="flex items-center gap-2 mt-1 text-xs text-bk-text-tertiary">
-              <span className="font-semibold text-bk-text-secondary">
-                {summary.pendingCount} pending accounts
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          
+          {/* Left: Accounts Receivable & Accounts Payable */}
+          <div className="grid grid-cols-2 gap-3 flex-1 min-w-0">
+            <div>
+              <span className="text-[10px] font-bold text-rose-700 uppercase tracking-wider block">
+                You Will Receive
               </span>
-              {summary.overdueCount > 0 && (
-                <span className="text-bk-status-overdue font-bold">
-                  • {summary.overdueCount} overdue
-                </span>
-              )}
+              <div className="mt-0.5 text-xl sm:text-2xl font-extrabold tracking-tight text-rose-600 font-mono">
+                {formatIndianCurrency(summary.totalReceivablePaise ?? summary.totalPendingPaise)}
+              </div>
+              <div className="text-[11px] text-bk-text-tertiary mt-0.5">
+                {summary.pendingCount} accounts pending
+              </div>
+            </div>
+
+            <div>
+              <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider block">
+                You Need To Pay
+              </span>
+              <div className="mt-0.5 text-xl sm:text-2xl font-extrabold tracking-tight text-indigo-600 font-mono">
+                {formatIndianCurrency(summary.totalPayablePaise ?? 0)}
+              </div>
+              <div className="text-[11px] text-bk-text-tertiary mt-0.5">
+                {summary.payableCustomersCount ?? 0} payables active
+              </div>
             </div>
           </div>
 
-          {/* Today's Cashflow Badge - Integrated Side-by-Side */}
-          <div className="p-2 sm:p-2.5 bg-bk-surface-soft border border-bk-border rounded-xl text-xs space-y-0.5 shrink-0 text-right">
+          {/* Right: Today's Actual Cash Flow */}
+          <div className="p-2 sm:p-2.5 bg-bk-surface-soft border border-bk-border rounded-xl text-xs space-y-0.5 shrink-0 sm:text-right">
             <div className="text-[9px] font-bold text-bk-text-secondary uppercase tracking-wider">
-              Today's Activity
+              Today&apos;s Activity
             </div>
-            <div className="flex items-center gap-2 font-mono font-bold text-xs pt-0.5">
-              <span className="text-bk-status-overdue flex items-center gap-0.5" title="Credit Given Today">
-                <ArrowUpRightIcon size={12} /> {formatIndianCurrency(summary.todayCreditPaise)}
+            <div className="flex sm:flex-col items-center sm:items-end gap-2 sm:gap-0.5 font-mono font-bold text-xs pt-0.5">
+              <span className="text-emerald-700 flex items-center gap-0.5" title="Cash Received Today">
+                <ArrowDownLeftIcon size={12} /> In: {formatIndianCurrency(summary.todayCashInflowPaise ?? summary.todayPaymentPaise)}
               </span>
-              <span className="text-bk-status-paid flex items-center gap-0.5" title="Payment Received Today">
-                <ArrowDownLeftIcon size={12} /> {formatIndianCurrency(summary.todayPaymentPaise)}
+              <span className="text-rose-700 flex items-center gap-0.5" title="Credit Given Today">
+                <ArrowUpRightIcon size={12} /> Out: {formatIndianCurrency(summary.todayCreditPaise)}
               </span>
             </div>
           </div>
@@ -182,26 +194,22 @@ export const CustomerList: React.FC<CustomerListProps> = ({
 
       {/* 3. Filter Status Chips */}
       <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none select-none">
-        {(['all', 'pending', 'due_today', 'overdue', 'paid'] as const).map((f) => {
-          const label =
-            f === 'all'
-              ? `All (${customers.length})`
-              : f === 'pending'
-              ? `Pending (${summary.pendingCount})`
-              : f === 'due_today'
-              ? `Due Today (${summary.dueTodayCount})`
-              : f === 'overdue'
-              ? `Overdue (${summary.overdueCount})`
-              : `Settled (${summary.settledCount})`;
-
-          const isActive = filter === f;
+        {([
+          { id: 'all', label: `All (${customers.length})` },
+          { id: 'pending', label: `Owes You (${summary.pendingCount})` },
+          { id: 'payable', label: `You Owe (${summary.payableCustomersCount ?? 0})` },
+          { id: 'due_today', label: `Due Today (${summary.dueTodayCount})` },
+          { id: 'overdue', label: `Overdue (${summary.overdueCount})` },
+          { id: 'paid', label: `Settled (${summary.settledCount})` }
+        ] as const).map(({ id, label }) => {
+          const isActive = filter === id;
           return (
             <button
-              key={f}
+              key={id}
               type="button"
               onClick={() => {
                 triggerHaptic('light');
-                setFilter(f);
+                setFilter(id as FilterStatus);
               }}
               className={`h-7 px-3 rounded-full border text-xs font-bold whitespace-nowrap cursor-pointer transition-all ${
                 isActive
@@ -225,12 +233,12 @@ export const CustomerList: React.FC<CustomerListProps> = ({
             </div>
             <div className="space-y-1">
               <h4 className="font-extrabold text-bk-text-primary text-sm sm:text-base">
-                {searchTerm || filter !== 'all' ? 'No matching customer accounts' : 'Your Khata ledger is empty'}
+                {searchTerm || filter !== 'all' ? 'No matching accounts found' : 'Your Khata ledger is empty'}
               </h4>
               <p className="text-xs text-bk-text-secondary max-w-sm leading-relaxed">
                 {searchTerm || filter !== 'all'
                   ? 'Try modifying your search text or switching to another filter.'
-                  : 'Add your first customer to record credit, track payments, and send WhatsApp reminders.'}
+                  : 'Add your first customer or supplier to track credits, debits, payments, and settlements.'}
               </p>
             </div>
             {!(searchTerm || filter !== 'all') && (
@@ -243,7 +251,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
                 className="mt-2 h-9 px-4 bg-bk-brand-primary hover:bg-bk-brand-primary-hover active:bg-bk-brand-primary-pressed text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
               >
                 <PlusIcon size={14} />
-                <span>Add First Customer</span>
+                <span>Add First Account</span>
               </button>
             )}
           </div>

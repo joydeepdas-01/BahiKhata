@@ -1,5 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { Transaction, Customer } from '../domain/customer';
+import { 
+  Transaction, 
+  Customer, 
+  FinancialTransactionType,
+  normalizeTransactionType,
+  getTransactionTypeLabel 
+} from '../domain/customer';
 import { formatIndianCurrency } from '../domain/amountFormatter';
 import { formatDisplayDate } from '../domain/dateClassifier';
 import { AppContentContainer } from './AppContentContainer';
@@ -14,6 +20,8 @@ interface TransactionsFeedProps {
   onSelectCustomer: (customer: Customer) => void;
 }
 
+type FeedFilterType = 'all' | 'receive' | 'pay' | 'credit' | 'payment' | 'adjustment';
+
 export const TransactionsFeed: React.FC<TransactionsFeedProps> = ({
   transactions,
   customers,
@@ -21,7 +29,7 @@ export const TransactionsFeed: React.FC<TransactionsFeedProps> = ({
 }) => {
   const { triggerHaptic } = useDisplaySettings();
   const [searchTerm, setSearchTerm] = useState('');
-  const [typeFilter, setTypeFilter] = useState<'all' | 'credit' | 'payment'>('all');
+  const [typeFilter, setTypeFilter] = useState<FeedFilterType>('all');
 
   const customerMap = useMemo(() => {
     const map = new Map<string, Customer>();
@@ -31,27 +39,49 @@ export const TransactionsFeed: React.FC<TransactionsFeedProps> = ({
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter((t) => {
-      if (typeFilter !== 'all' && t.type !== typeFilter) return false;
+      const normType = normalizeTransactionType(t.type);
+      const info = getTransactionTypeLabel(normType);
+
+      if (typeFilter === 'receive' && info.category !== 'receive') return false;
+      if (typeFilter === 'pay' && info.category !== 'pay') return false;
+      if (typeFilter === 'credit' && normType !== 'credit_given' && normType !== 'debt_incurred') return false;
+      if (typeFilter === 'payment' && normType !== 'payment_received' && normType !== 'payment_made') return false;
+      if (typeFilter === 'adjustment' && info.category !== 'adjustment') return false;
 
       const cust = customerMap.get(t.customerId);
       const custName = cust ? cust.name.toLowerCase() : '';
       const note = t.note ? t.note.toLowerCase() : '';
+      const ref = t.referenceNumber ? t.referenceNumber.toLowerCase() : '';
       const search = searchTerm.toLowerCase().trim();
 
       if (!search) return true;
-      return custName.includes(search) || note.includes(search);
+      return custName.includes(search) || note.includes(search) || ref.includes(search);
     });
   }, [transactions, typeFilter, searchTerm, customerMap]);
 
-  // Calculate totals for filtered list
+  // Aggregate totals
   const totals = useMemo(() => {
-    let credit = 0;
-    let payment = 0;
+    let cashReceived = 0;
+    let cashPaid = 0;
+    let creditSales = 0;
+    let creditPurchases = 0;
+
     filteredTransactions.forEach((t) => {
-      if (t.type === 'credit') credit += t.amount;
-      else if (t.type === 'payment') payment += t.amount;
+      if (t.isReversed) return;
+      const normType = normalizeTransactionType(t.type);
+
+      if (normType === 'payment_received' || normType === 'advance_received') {
+        cashReceived += t.amount;
+      } else if (normType === 'payment_made' || normType === 'advance_paid') {
+        cashPaid += t.amount;
+      } else if (normType === 'credit_given') {
+        creditSales += t.amount;
+      } else if (normType === 'debt_incurred') {
+        creditPurchases += t.amount;
+      }
     });
-    return { credit, payment };
+
+    return { cashReceived, cashPaid, creditSales, creditPurchases };
   }, [filteredTransactions]);
 
   return (
@@ -64,19 +94,19 @@ export const TransactionsFeed: React.FC<TransactionsFeedProps> = ({
               Transaction Activity Feed
             </h3>
             <p className="text-xs text-bk-text-tertiary">
-              Complete chronological audit trail of all credit and payments recorded
+              Complete chronological audit trail of all credit, debt, payments & settlements
             </p>
           </div>
 
-          <div className="flex items-center gap-3 font-mono font-bold text-xs bg-bk-surface-soft border border-bk-border p-2 sm:p-2.5 rounded-xl shrink-0">
-            <div className="text-bk-status-overdue flex items-center gap-1">
-              <ArrowUpRightIcon size={14} />
-              <span>Gave: {formatIndianCurrency(totals.credit)}</span>
+          <div className="flex flex-wrap items-center gap-2.5 font-mono font-bold text-xs bg-bk-surface-soft border border-bk-border p-2 sm:p-2.5 rounded-xl shrink-0">
+            <div className="text-emerald-700 flex items-center gap-1" title="Actual cash received">
+              <ArrowDownLeftIcon size={14} />
+              <span>In: {formatIndianCurrency(totals.cashReceived)}</span>
             </div>
             <span className="text-bk-border font-light">|</span>
-            <div className="text-bk-status-paid flex items-center gap-1">
-              <ArrowDownLeftIcon size={14} />
-              <span>Got: {formatIndianCurrency(totals.payment)}</span>
+            <div className="text-rose-700 flex items-center gap-1" title="Actual cash paid out">
+              <ArrowUpRightIcon size={14} />
+              <span>Out: {formatIndianCurrency(totals.cashPaid)}</span>
             </div>
           </div>
         </div>
@@ -92,7 +122,7 @@ export const TransactionsFeed: React.FC<TransactionsFeedProps> = ({
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by customer name or item memo..."
+            placeholder="Search by customer, description, or ref #..."
             className="w-full h-10 pl-9 pr-8 border border-bk-border rounded-xl bg-white text-bk-text-primary text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary shadow-2xs"
           />
           {searchTerm && (
@@ -105,130 +135,132 @@ export const TransactionsFeed: React.FC<TransactionsFeedProps> = ({
           )}
         </div>
 
-        {/* Type Filter Buttons */}
-        <div className="flex gap-1.5 shrink-0">
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic('light');
-              setTypeFilter('all');
-            }}
-            className={`h-8 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-              typeFilter === 'all'
-                ? 'bg-bk-brand-primary text-white border-bk-brand-primary shadow-2xs'
-                : 'bg-white text-bk-text-secondary border-bk-border hover:bg-bk-surface-soft'
-            }`}
-          >
-            All ({transactions.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic('light');
-              setTypeFilter('credit');
-            }}
-            className={`h-8 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-              typeFilter === 'credit'
-                ? 'bg-bk-status-overdue text-white border-bk-status-overdue shadow-2xs'
-                : 'bg-white text-bk-text-secondary border-bk-border hover:bg-bk-surface-soft'
-            }`}
-          >
-            Credit (+ Udhaar)
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic('light');
-              setTypeFilter('payment');
-            }}
-            className={`h-8 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-              typeFilter === 'payment'
-                ? 'bg-bk-status-paid text-white border-bk-status-paid shadow-2xs'
-                : 'bg-white text-bk-text-secondary border-bk-border hover:bg-bk-surface-soft'
-            }`}
-          >
-            Payment (- Jama)
-          </button>
+        {/* Filter Chips */}
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none shrink-0">
+          {([
+            { id: 'all', label: `All (${transactions.length})` },
+            { id: 'receive', label: 'Money Received' },
+            { id: 'pay', label: 'Money Paid' },
+            { id: 'credit', label: 'Credit Given / Taken' },
+            { id: 'adjustment', label: 'Adjustments / Reversals' }
+          ] as const).map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => {
+                triggerHaptic('light');
+                setTypeFilter(id as FeedFilterType);
+              }}
+              className={`h-8 px-3 rounded-xl border text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                typeFilter === id
+                  ? 'bg-bk-brand-primary text-white border-bk-brand-primary shadow-2xs'
+                  : 'bg-white text-bk-text-secondary border-bk-border hover:bg-bk-surface-soft'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* 3. Transaction List */}
-      <div className="pt-0.5">
+      {/* 3. Transaction Items Feed */}
+      <div className="space-y-2 select-text">
         {filteredTransactions.length === 0 ? (
-          <div className="p-8 sm:p-12 border border-dashed border-bk-border rounded-2xl bg-white text-center space-y-2">
-            <ClockIcon size={40} className="mx-auto text-bk-text-tertiary opacity-30" />
-            <h4 className="font-bold text-bk-text-primary text-sm sm:text-base">No transaction entries found</h4>
-            <p className="text-xs text-bk-text-secondary max-w-sm mx-auto leading-relaxed">
-              {searchTerm || typeFilter !== 'all'
-                ? 'Try modifying your search text or switching the filter above.'
-                : 'Transactions recorded from customer ledger cards will appear here in chronological order.'}
-            </p>
+          <div className="p-8 text-center text-xs text-bk-text-tertiary border border-dashed border-bk-border rounded-2xl bg-white">
+            No transactions match the selected filters.
           </div>
         ) : (
-          <div className="space-y-2 select-text">
-            {filteredTransactions.map((t) => {
-              const cust = customerMap.get(t.customerId);
-              const isCredit = t.type === 'credit';
+          filteredTransactions.map((tx) => {
+            const customer = customerMap.get(tx.customerId);
+            const normType = normalizeTransactionType(tx.type);
+            const info = getTransactionTypeLabel(normType);
+            const isCredit = normType === 'credit_given' || normType === 'debt_incurred';
 
-              return (
-                <div
-                  key={t.id}
-                  onClick={() => {
-                    if (cust) {
-                      triggerHaptic('light');
-                      onSelectCustomer(cust);
-                    }
-                  }}
-                  className="p-3 sm:p-3.5 bg-white border border-bk-border hover:border-bk-brand-primary/40 rounded-xl shadow-2xs flex items-center justify-between gap-3 transition-colors cursor-pointer group"
-                >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div
-                      className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 border ${
-                        isCredit
-                          ? 'bg-red-50 text-bk-status-overdue border-red-100'
-                          : 'bg-emerald-50 text-bk-status-paid border-emerald-100'
-                      }`}
-                    >
-                      {isCredit ? <ArrowUpRightIcon size={16} /> : <ArrowDownLeftIcon size={16} />}
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs sm:text-sm font-extrabold text-bk-text-primary truncate group-hover:text-bk-brand-primary transition-colors">
-                          {cust ? cust.name : 'Unknown Customer'}
-                        </span>
-                        <span className="text-[10px] text-bk-text-tertiary font-mono shrink-0">
-                          {formatDisplayDate(t.date)}
-                        </span>
-                      </div>
-                      <p className="text-xs text-bk-text-secondary truncate mt-0.5">
-                        {t.note || (isCredit ? 'Credit given' : 'Payment received')}
-                      </p>
-                    </div>
+            return (
+              <div
+                key={tx.id}
+                onClick={() => {
+                  if (customer) {
+                    triggerHaptic('light');
+                    onSelectCustomer(customer);
+                  }
+                }}
+                className={`p-3.5 bg-white border border-bk-border rounded-2xl shadow-2xs hover:border-bk-brand-primary/40 transition-all flex items-center justify-between gap-3 cursor-pointer group ${
+                  tx.isReversed ? 'opacity-50 bg-zinc-50' : ''
+                }`}
+              >
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  {/* Category Direction Icon */}
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 border ${
+                    info.category === 'receive'
+                      ? 'bg-red-50 border-red-100 text-rose-600'
+                      : info.category === 'pay'
+                      ? 'bg-indigo-50 border-indigo-100 text-indigo-600'
+                      : 'bg-purple-50 border-purple-100 text-purple-600'
+                  }`}>
+                    {isCredit ? <ArrowUpRightIcon size={16} /> : <ArrowDownLeftIcon size={16} />}
                   </div>
 
-                  <div className="flex flex-col items-end shrink-0 pl-1">
-                    <span
-                      className={`font-mono text-sm sm:text-base font-extrabold ${
-                        isCredit ? 'text-bk-status-overdue' : 'text-bk-status-paid'
-                      }`}
-                    >
-                      {isCredit ? '+' : '-'} {formatIndianCurrency(t.amount)}
-                    </span>
-                    <span
-                      className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded mt-0.5 ${
-                        isCredit
-                          ? 'bg-red-50 text-bk-status-overdue'
-                          : 'bg-emerald-50 text-bk-status-paid'
-                      }`}
-                    >
-                      {isCredit ? 'Credit' : 'Payment'}
-                    </span>
+                  {/* Customer & Transaction Meta */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-xs sm:text-sm text-bk-text-primary group-hover:text-bk-brand-primary transition-colors truncate">
+                        {customer?.name || 'Unknown Account'}
+                      </span>
+                      <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded border ${
+                        info.category === 'receive'
+                          ? 'bg-red-50 text-rose-700 border-red-100'
+                          : info.category === 'pay'
+                          ? 'bg-indigo-50 text-indigo-700 border-indigo-100'
+                          : 'bg-purple-50 text-purple-700 border-purple-100'
+                      }`}>
+                        {info.label}
+                      </span>
+                      {tx.paymentMethod && (
+                        <span className="text-[10px] font-mono text-bk-text-tertiary uppercase">
+                          [{tx.paymentMethod}]
+                        </span>
+                      )}
+                      {tx.isReversed && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-zinc-200 text-zinc-700">
+                          Reversed
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs text-bk-text-secondary mt-0.5">
+                      <span className="text-[11px] text-bk-text-tertiary">
+                        {formatDisplayDate(tx.date)}
+                      </span>
+                      {tx.referenceNumber && (
+                        <span className="font-mono text-[10px] text-bk-text-tertiary">
+                          Ref: {tx.referenceNumber}
+                        </span>
+                      )}
+                      {tx.note && (
+                        <span className="text-[11px] text-bk-text-secondary truncate">
+                          • {tx.note}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
+
+                {/* Amount */}
+                <div className="text-right shrink-0">
+                  <div className={`font-mono text-sm sm:text-base font-black tracking-tight ${
+                    tx.isReversed
+                      ? 'line-through text-zinc-400'
+                      : isCredit
+                      ? 'text-rose-600'
+                      : 'text-emerald-600'
+                  }`}>
+                    {isCredit ? '+' : '-'}{formatIndianCurrency(tx.amount)}
+                  </div>
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
     </AppContentContainer>

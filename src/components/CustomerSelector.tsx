@@ -62,20 +62,14 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
 
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
-      window.addEventListener('keydown', handleKeyDown);
+      document.addEventListener('keydown', handleKeyDown);
     }
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
-      window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen]);
-
-  const formatPhone = (phone: string) => {
-    if (phone.startsWith('91') && phone.length === 12) {
-      return `+91 ${phone.substring(2, 7)} ${phone.substring(7)}`;
-    }
-    return phone;
-  };
 
   const getInitials = (name: string) => {
     return (
@@ -89,35 +83,77 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
     );
   };
 
+  const formatPhone = (phone: string) => {
+    if (phone.startsWith('91') && phone.length === 12) {
+      return `+91 ${phone.substring(2, 7)} ${phone.substring(7)}`;
+    }
+    return phone;
+  };
+
+  const getCustomerBadge = (c: Customer) => {
+    const rec = c.receivablePaise ?? (c.amount > 0 ? c.amount : 0);
+    const pay = c.payablePaise ?? 0;
+    const adv = c.customerAdvancePaise ?? (c.amount < 0 ? Math.abs(c.amount) : 0);
+
+    if (rec > 0 && pay > 0) {
+      return {
+        amount: formatIndianCurrency(rec),
+        secondary: `Owe: ${formatIndianCurrency(pay)}`,
+        label: 'Mutual',
+        color: 'text-purple-700 bg-purple-50'
+      };
+    } else if (rec > 0) {
+      return {
+        amount: formatIndianCurrency(rec),
+        label: 'Owes You',
+        color: 'text-rose-700 bg-red-50'
+      };
+    } else if (pay > 0) {
+      return {
+        amount: formatIndianCurrency(pay),
+        label: 'You Owe',
+        color: 'text-indigo-700 bg-indigo-50'
+      };
+    } else if (adv > 0) {
+      return {
+        amount: formatIndianCurrency(adv),
+        label: 'Advance',
+        color: 'text-blue-700 bg-blue-50'
+      };
+    } else {
+      return {
+        amount: '₹0.00',
+        label: 'Settled',
+        color: 'text-emerald-700 bg-emerald-50'
+      };
+    }
+  };
+
   return (
     <div className="relative w-full" ref={dropdownRef}>
-      {/* Trigger Button: Shows selected customer in high-fidelity preview */}
+      {/* Trigger Button */}
       <button
         type="button"
         disabled={disabled}
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-3 py-2 border border-bk-border rounded-xl bg-white hover:bg-bk-surface-soft/60 focus:outline-none focus:ring-2 focus:ring-bk-brand-primary/20 focus:border-bk-brand-primary flex items-center justify-between text-left transition-colors cursor-pointer shadow-2xs disabled:opacity-60 disabled:cursor-not-allowed"
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        className={`w-full px-3 py-2 bg-white border border-bk-border rounded-xl flex items-center justify-between text-left transition-all ${
+          disabled
+            ? 'opacity-60 cursor-not-allowed bg-bk-surface-soft'
+            : 'cursor-pointer hover:border-bk-brand-primary/50 focus:outline-none focus:ring-1 focus:ring-bk-brand-primary'
+        }`}
       >
         {selectedCustomer ? (
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <div className="w-8 h-8 rounded-full bg-bk-surface-soft border border-bk-border text-bk-text-primary font-bold text-xs flex items-center justify-center shrink-0">
+            <div className="w-7 h-7 rounded-full bg-bk-surface-soft border border-bk-border text-bk-text-primary text-xs font-bold flex items-center justify-center shrink-0">
               {getInitials(selectedCustomer.name)}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-bk-text-primary text-xs sm:text-sm truncate">
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-xs font-bold text-bk-text-primary truncate">
                   {selectedCustomer.name}
                 </span>
-                <span
-                  className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${
-                    selectedCustomer.amount > 0
-                      ? 'bg-red-50 text-bk-status-overdue'
-                      : selectedCustomer.amount === 0
-                      ? 'bg-emerald-50 text-bk-status-paid'
-                      : 'bg-blue-50 text-blue-700'
-                  }`}
-                >
-                  {formatIndianCurrency(selectedCustomer.amount)}
+                <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${getCustomerBadge(selectedCustomer).color}`}>
+                  {getCustomerBadge(selectedCustomer).amount} ({getCustomerBadge(selectedCustomer).label})
                 </span>
               </div>
               <p className="text-[11px] font-mono text-bk-text-tertiary truncate">
@@ -126,7 +162,7 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
             </div>
           </div>
         ) : (
-          <span className="text-xs text-bk-text-tertiary">Select a customer...</span>
+          <span className="text-xs text-bk-text-tertiary">Select an account...</span>
         )}
 
         <div className="text-bk-text-tertiary ml-2 shrink-0">
@@ -167,11 +203,12 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
           <div className="overflow-y-auto flex-1 divide-y divide-bk-border/40">
             {filteredCustomers.length === 0 ? (
               <div className="p-4 text-center text-xs text-bk-text-tertiary">
-                No matching customers found.
+                No matching accounts found.
               </div>
             ) : (
               filteredCustomers.map((c) => {
-                const isSelected = c.id === selectedCustomer?.id;
+                const isSelected = c.id === selectedCustomerId;
+                const badge = getCustomerBadge(c);
                 return (
                   <button
                     key={c.id}
@@ -205,19 +242,11 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
                     </div>
 
                     <div className="flex flex-col items-end shrink-0">
-                      <span
-                        className={`text-xs font-mono font-bold ${
-                          c.amount > 0
-                            ? 'text-bk-status-overdue'
-                            : c.amount === 0
-                            ? 'text-bk-status-paid'
-                            : 'text-blue-600'
-                        }`}
-                      >
-                        {formatIndianCurrency(c.amount)}
+                      <span className="text-xs font-mono font-bold text-bk-text-primary">
+                        {badge.amount}
                       </span>
-                      <span className="text-[9px] text-bk-text-tertiary uppercase">
-                        {c.amount > 0 ? 'Due' : c.amount === 0 ? 'Settled' : 'Advance'}
+                      <span className={`text-[9px] font-semibold px-1 py-0.2 rounded mt-0.5 ${badge.color}`}>
+                        {badge.label}
                       </span>
                     </div>
                   </button>
@@ -230,4 +259,3 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
     </div>
   );
 };
-

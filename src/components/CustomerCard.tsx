@@ -36,8 +36,15 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
       ? `+91 ${customer.phone.substring(2, 7)} ${customer.phone.substring(7)}`
       : customer.phone;
 
-  const isDue = customer.amount > 0;
-  const isSettled = customer.amount === 0;
+  const receivable = customer.receivablePaise ?? (customer.amount > 0 ? customer.amount : 0);
+  const payable = customer.payablePaise ?? 0;
+  const customerAdvance = customer.customerAdvancePaise ?? (customer.amount < 0 ? Math.abs(customer.amount) : 0);
+  const supplierAdvance = customer.supplierAdvancePaise ?? 0;
+
+  const hasReceivable = receivable > 0;
+  const hasPayable = payable > 0;
+  const hasAdvance = customerAdvance > 0 || supplierAdvance > 0;
+  const isSettled = !hasReceivable && !hasPayable && !hasAdvance;
 
   // 2 uppercase initials
   const initials =
@@ -78,28 +85,55 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
 
         {/* Financial Information */}
         <div className="flex flex-col items-end shrink-0 pl-1">
-          <span
-            className={`font-mono text-base font-black tracking-tight leading-none ${
-              isDue
-                ? 'text-bk-status-overdue'
-                : isSettled
-                ? 'text-bk-status-paid'
-                : 'text-blue-600'
-            }`}
-          >
-            {formatIndianCurrency(customer.amount)}
-          </span>
-          <span
-            className={`text-[9px] font-bold uppercase tracking-wider mt-1 px-1.5 py-0.2 rounded ${
-              isDue
-                ? 'bg-red-50 text-bk-status-overdue border border-red-100'
-                : isSettled
-                ? 'bg-emerald-50 text-bk-status-paid border border-emerald-100'
-                : 'bg-blue-50 text-blue-700 border border-blue-100'
-            }`}
-          >
-            {isDue ? 'Due' : isSettled ? 'Settled' : 'Advance'}
-          </span>
+          {hasReceivable && hasPayable ? (
+            <div className="flex flex-col items-end gap-0.5">
+              <span className="font-mono text-xs sm:text-sm font-black text-rose-600">
+                Owes: {formatIndianCurrency(receivable)}
+              </span>
+              <span className="font-mono text-xs sm:text-sm font-black text-indigo-600">
+                You Owe: {formatIndianCurrency(payable)}
+              </span>
+              <span className="text-[9px] font-bold uppercase tracking-wider px-1 py-0.2 rounded bg-purple-50 text-purple-700 border border-purple-100">
+                Net: {formatIndianCurrency(receivable - payable)}
+              </span>
+            </div>
+          ) : hasReceivable ? (
+            <>
+              <span className="font-mono text-base font-black tracking-tight leading-none text-rose-600">
+                {formatIndianCurrency(receivable)}
+              </span>
+              <span className="text-[9px] font-bold uppercase tracking-wider mt-1 px-1.5 py-0.2 rounded bg-red-50 text-rose-700 border border-red-100">
+                Owes You
+              </span>
+            </>
+          ) : hasPayable ? (
+            <>
+              <span className="font-mono text-base font-black tracking-tight leading-none text-indigo-600">
+                {formatIndianCurrency(payable)}
+              </span>
+              <span className="text-[9px] font-bold uppercase tracking-wider mt-1 px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">
+                You Owe
+              </span>
+            </>
+          ) : hasAdvance ? (
+            <>
+              <span className="font-mono text-base font-black tracking-tight leading-none text-blue-600">
+                {formatIndianCurrency(customerAdvance || supplierAdvance)}
+              </span>
+              <span className="text-[9px] font-bold uppercase tracking-wider mt-1 px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 border border-blue-100">
+                Advance
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="font-mono text-base font-black tracking-tight leading-none text-emerald-600">
+                ₹0.00
+              </span>
+              <span className="text-[9px] font-bold uppercase tracking-wider mt-1 px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-100">
+                Settled
+              </span>
+            </>
+          )}
         </div>
       </div>
 
@@ -140,7 +174,7 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
         )}
       </div>
 
-      {/* 3. Action Area: Standardized 2-Tier Structured Layout (Zero wrapping issues) */}
+      {/* 3. Action Area: Standardized 2-Tier Structured Layout */}
       <div
         onClick={(e) => e.stopPropagation()}
         className="border-t border-bk-border pt-2.5 mt-0.5 space-y-2 select-none"
@@ -152,10 +186,10 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
             onClick={(e) => {
               e.stopPropagation();
               triggerHaptic('light');
-              onQuickTransaction(customer, 'credit');
+              onQuickTransaction(customer, hasPayable && !hasReceivable ? 'credit' : 'credit');
             }}
-            className="h-8.5 rounded-lg bg-red-50 hover:bg-red-100/90 active:bg-red-200 text-bk-status-overdue border border-red-200/90 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
-            title="Record Credit Given"
+            className="h-8.5 rounded-lg bg-red-50 hover:bg-red-100/90 active:bg-red-200 text-rose-700 border border-red-200/90 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
+            title="Record Credit"
           >
             <ArrowUpRightIcon size={13} />
             <span>+ Gave Credit</span>
@@ -168,8 +202,8 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
               triggerHaptic('light');
               onQuickTransaction(customer, 'payment');
             }}
-            className="h-8.5 rounded-lg bg-emerald-50 hover:bg-emerald-100/90 active:bg-emerald-200 text-bk-status-paid border border-emerald-200/90 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
-            title="Record Payment Received"
+            className="h-8.5 rounded-lg bg-emerald-50 hover:bg-emerald-100/90 active:bg-emerald-200 text-emerald-700 border border-emerald-200/90 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
+            title="Record Payment"
           >
             <ArrowDownLeftIcon size={13} />
             <span>- Got Payment</span>
@@ -207,7 +241,7 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
             </button>
           </div>
 
-          {isDue ? (
+          {hasReceivable ? (
             <button
               type="button"
               onClick={(e) => {
@@ -222,8 +256,8 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
               <span>Send Reminder</span>
             </button>
           ) : (
-            <span className="text-[10px] text-bk-status-paid font-bold flex items-center gap-1 px-1">
-              ✓ Settled
+            <span className="text-[10px] text-emerald-700 font-bold flex items-center gap-1 px-1">
+              ✓ {isSettled ? 'Settled' : hasPayable ? 'Payable Account' : 'Credit Balance'}
             </span>
           )}
         </div>
